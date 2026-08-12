@@ -227,6 +227,84 @@
     cursor: pointer;
     box-shadow: 0 4px 14px rgba(0,0,0,0.2);
   }
+
+  #counter {
+    position: fixed;
+    top: max(14px, env(safe-area-inset-top));
+    left: max(14px, env(safe-area-inset-left));
+    z-index: 21;
+    background: rgba(255,255,255,0.28);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    color: #fff;
+    font-weight: 800;
+    font-size: clamp(0.9em, 3.6vw, 1.1em);
+    padding: 10px 18px;
+    border-radius: 50px;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.2);
+    text-shadow: 0 2px 6px rgba(0,0,0,0.2);
+  }
+
+  #congratsOverlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 22;
+    background: radial-gradient(circle at 50% 40%, #ffd93d 0%, #ff5da2 55%, #7f5bff 100%);
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 30px;
+    animation: fadeIn 0.6s ease;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  #congratsOverlay h1 {
+    color: #fff;
+    font-size: clamp(2em, 10vw, 3.4em);
+    margin: 0 0 12px;
+    text-shadow: 0 4px 16px rgba(0,0,0,0.3);
+    animation: bob 1.2s ease-in-out infinite;
+  }
+
+  #congratsOverlay p {
+    color: #fff;
+    font-size: clamp(1.1em, 5vw, 1.5em);
+    font-weight: 600;
+    margin: 0 0 30px;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.25);
+  }
+
+  #playAgainBtn {
+    font-family: 'Baloo 2', sans-serif;
+    font-weight: 800;
+    font-size: clamp(1.1em, 5vw, 1.4em);
+    padding: 16px 42px;
+    border: none;
+    border-radius: 50px;
+    background: #fff;
+    color: #ff4d6d;
+    cursor: pointer;
+    box-shadow: 0 10px 26px rgba(0,0,0,0.25);
+  }
+
+  .rocket {
+    position: fixed;
+    bottom: -5%;
+    font-size: 2em;
+    pointer-events: none;
+    z-index: 23;
+    animation: launch linear forwards;
+  }
+
+  @keyframes launch {
+    to { transform: translateY(-90vh); opacity: 0.2; }
+  }
 </style>
 </head>
 <body>
@@ -234,6 +312,7 @@
 <div class="sky" id="sky"></div>
 
 <button id="soundToggle" aria-label="Toggle sound">🔊</button>
+<div id="counter">10 left</div>
 
 <div class="topbar"><h1>🐾 Animal Friends 🐾</h1></div>
 
@@ -243,8 +322,14 @@
 
 <div id="startOverlay">
   <h1>🐾 Animal Friends 🐾</h1>
-  <p>All the animals will float around the screen. Listen for the name I call out, then tap the matching animal!</p>
+  <p>10 animals are floating around the screen. Listen for the name I call out, then tap the matching animal!</p>
   <button id="startBtn">▶️ Start!</button>
+</div>
+
+<div id="congratsOverlay">
+  <h1>🎉 Congratulations! 🎉</h1>
+  <p>You found all 10 animals! 🐾</p>
+  <button id="playAgainBtn">🔁 Play Again</button>
 </div>
 
 <script>
@@ -254,6 +339,9 @@
   const startOverlay = document.getElementById('startOverlay');
   const startBtn = document.getElementById('startBtn');
   const soundToggle = document.getElementById('soundToggle');
+  const counterEl = document.getElementById('counter');
+  const congratsOverlay = document.getElementById('congratsOverlay');
+  const playAgainBtn = document.getElementById('playAgainBtn');
 
   const ANIMAL_POOL = [
     { name: 'Dog',      emoji: '🐶', sound: 'Woof woof!' },
@@ -409,12 +497,37 @@
     });
   }
 
+  // Pick a pleasant female voice once voices are available (loading is
+  // async and browser-dependent, so we retry on the voiceschanged event).
+  let ladyVoice = null;
+  function pickLadyVoice() {
+    if (!('speechSynthesis' in window)) return;
+    const voices = window.speechSynthesis.getVoices();
+    if (!voices.length) return;
+
+    const preferredNames = [
+      'Google UK English Female', 'Google US English', 'Microsoft Zira',
+      'Samantha', 'Victoria', 'Karen', 'Moira', 'Tessa', 'Fiona', 'Susan', 'Serena'
+    ];
+
+    ladyVoice =
+      voices.find(v => preferredNames.some(name => v.name.includes(name))) ||
+      voices.find(v => /female|woman|girl/i.test(v.name)) ||
+      voices.find(v => v.lang && v.lang.startsWith('en')) ||
+      voices[0];
+  }
+  pickLadyVoice();
+  if ('speechSynthesis' in window) {
+    window.speechSynthesis.onvoiceschanged = pickLadyVoice;
+  }
+
   function speak(text) {
     if (!soundOn || !('speechSynthesis' in window)) return;
     window.speechSynthesis.cancel();
     const utter = new SpeechSynthesisUtterance(text);
-    utter.rate = 0.95;
-    utter.pitch = 1.15;
+    if (ladyVoice) utter.voice = ladyVoice;
+    utter.rate = 0.92;
+    utter.pitch = 1.35; // warm, sweet tone
     window.speechSynthesis.speak(utter);
   }
 
@@ -478,11 +591,34 @@
   }
 
   // ---------- Bubble field setup ----------
+  const TOTAL_ANIMALS = 10; // the round always starts with 10 and counts down to 0
   function bubbleCount() {
-    const w = window.innerWidth;
-    if (w < 480) return 6;
-    if (w < 900) return 8;
-    return 10;
+    return TOTAL_ANIMALS;
+  }
+
+  // Pushes any overlapping bubbles apart so they never sit on top of each
+  // other, whether at initial placement or while drifting.
+  function resolveCollisions() {
+    for (let i = 0; i < bubbles.length; i++) {
+      for (let j = i + 1; j < bubbles.length; j++) {
+        const a = bubbles[i], b = bubbles[j];
+        const dx = b.x - a.x, dy = b.y - a.y;
+        const dist = Math.hypot(dx, dy) || 0.001;
+        const minDist = (a.size + b.size) / 2 + 8; // small gap between bubbles
+        if (dist < minDist) {
+          const overlap = (minDist - dist) / 2;
+          const nx = dx / dist, ny = dy / dist;
+          a.x -= nx * overlap;
+          a.y -= ny * overlap;
+          b.x += nx * overlap;
+          b.y += ny * overlap;
+          a.vx -= nx * 0.015;
+          a.vy -= ny * 0.015;
+          b.vx += nx * 0.015;
+          b.vy += ny * 0.015;
+        }
+      }
+    }
   }
 
   function boundsForSize(size) {
@@ -533,6 +669,21 @@
       el.addEventListener('pointerdown', () => onBubbleClick(b));
       return b;
     });
+
+    // Settle any overlaps left over from the jittered grid placement before
+    // the first frame ever paints.
+    for (let pass = 0; pass < 8; pass++) {
+      resolveCollisions();
+      bubbles.forEach(b => {
+        const { minX, maxX, minY, maxY } = boundsForSize(b.size);
+        b.x = Math.min(Math.max(b.x, minX), maxX);
+        b.y = Math.min(Math.max(b.y, minY), maxY);
+      });
+    }
+    bubbles.forEach(b => {
+      b.el.style.left = b.x + 'px';
+      b.el.style.top = b.y + 'px';
+    });
   }
 
   function clearBubbles() {
@@ -563,7 +714,14 @@
       if (b.x > maxX) { b.x = maxX; b.vx = -Math.abs(b.vx); }
       if (b.y < minY) { b.y = minY; b.vy = Math.abs(b.vy); }
       if (b.y > maxY) { b.y = maxY; b.vy = -Math.abs(b.vy); }
+    });
 
+    resolveCollisions();
+
+    bubbles.forEach(b => {
+      const { minX, maxX, minY, maxY } = boundsForSize(b.size);
+      b.x = Math.min(Math.max(b.x, minX), maxX);
+      b.y = Math.min(Math.max(b.y, minY), maxY);
       b.el.style.left = b.x + 'px';
       b.el.style.top = b.y + 'px';
     });
@@ -591,6 +749,10 @@
     }, 6000);
   }
 
+  function updateCounter() {
+    counterEl.textContent = bubbles.length === 1 ? '1 left' : `${bubbles.length} left`;
+  }
+
   function onBubbleClick(b) {
     if (!awaitingAnswer) return;
 
@@ -608,11 +770,17 @@
       speak(`${choice(PRAISES)} That's ${article(b.data.name)} ${b.data.name}! ${b.data.sound}`);
 
       setTimeout(() => {
-        // replace the caught bubble with a fresh one so the field stays full
+        // the found animal is gone for good — the field counts down, it's
+        // never replenished
         b.el.remove();
         bubbles = bubbles.filter(x => x !== b);
-        addFreshBubble();
-        askForTarget();
+        updateCounter();
+
+        if (bubbles.length === 0) {
+          finishGame();
+        } else {
+          askForTarget();
+        }
       }, 1200);
     } else {
       playBuzzer();
@@ -623,35 +791,56 @@
     }
   }
 
-  function addFreshBubble() {
-    const used = new Set(bubbles.map(b => b.data.name));
-    const options = ANIMAL_POOL.filter(a => !used.has(a.name));
-    const data = options.length ? choice(options) : choice(ANIMAL_POOL);
+  // ---------- Finale: all 10 found ----------
+  function launchFireworks() {
+    let bursts = 0;
+    const interval = setInterval(() => {
+      const x = rand(60, window.innerWidth - 60);
+      const y = rand(80, window.innerHeight * 0.6);
+      confettiBurst(x, y);
+      starBurst(x, y);
+      bursts++;
+      if (bursts >= 10) clearInterval(interval);
+    }, 300);
 
-    const el = document.createElement('button');
-    el.className = 'animal-btn';
-    el.textContent = data.emoji;
-    el.setAttribute('aria-label', data.name);
-    stage.appendChild(el);
-
-    const size = el.offsetWidth || 90;
-    const { minX, maxX, minY, maxY } = boundsForSize(size);
-    const speed = rand(0.12, 0.35);
-    const angle = rand(0, Math.PI * 2);
-
-    const b = {
-      data, el,
-      x: rand(minX, maxX),
-      y: rand(minY, maxY),
-      vx: Math.cos(angle) * speed,
-      vy: Math.sin(angle) * speed,
-      size
-    };
-    el.style.left = b.x + 'px';
-    el.style.top = b.y + 'px';
-    el.addEventListener('pointerdown', () => onBubbleClick(b));
-    bubbles.push(b);
+    // a few rockets streaking up for good measure
+    for (let i = 0; i < 5; i++) {
+      setTimeout(() => {
+        const r = document.createElement('div');
+        r.className = 'rocket';
+        r.textContent = '🎆';
+        r.style.left = rand(10, 90) + 'vw';
+        r.style.animationDuration = rand(1.4, 2.2) + 's';
+        document.body.appendChild(r);
+        setTimeout(() => r.remove(), 2500);
+      }, i * 350);
+    }
   }
+
+  function finishGame() {
+    clearInterval(repeatTimer);
+    cancelAnimationFrame(rafId);
+    promptLabel.textContent = '';
+    playClapSound();
+    setTimeout(playClapSound, 550); // a bigger final round of applause
+    speak('Congratulations! You found all ten animals! Amazing job!');
+    congratsOverlay.style.display = 'flex';
+    launchFireworks();
+  }
+
+  function startGame() {
+    congratsOverlay.style.display = 'none';
+    clearBubbles();
+    counterEl.textContent = `${TOTAL_ANIMALS} left`;
+    target = null;
+    buildBubbles();
+    updateCounter();
+    cancelAnimationFrame(rafId);
+    tick();
+    askForTarget();
+  }
+
+  playAgainBtn.addEventListener('click', startGame);
 
   window.addEventListener('resize', () => {
     bubbles.forEach(b => {
@@ -665,11 +854,7 @@
     getAudioCtx();
     speak(' '); // tiny unlock utterance so mobile browsers allow speech later
     startOverlay.style.display = 'none';
-
-    buildBubbles();
-    cancelAnimationFrame(rafId);
-    tick();
-    askForTarget();
+    startGame();
   });
 </script>
 
