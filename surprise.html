@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>A Little Surprise for Keerthi</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    height: 100%;
+    overflow: hidden;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, #ff9a9e, #fecfef, #ff6a88, #ff99ac);
+    background-size: 400% 400%;
+    animation: gradientShift 12s ease infinite;
+  }
+
+  @keyframes gradientShift {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+
+  .container {
+    position: relative;
+    width: 100%;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 20px;
+  }
+
+  h1 {
+    color: #fff;
+    text-shadow: 2px 2px 8px rgba(0,0,0,0.25);
+    font-size: 2.2em;
+    margin-bottom: 5px;
+  }
+
+  p.subtitle {
+    color: #fff;
+    font-size: 1.1em;
+    margin-top: 0;
+    margin-bottom: 40px;
+    text-shadow: 1px 1px 4px rgba(0,0,0,0.2);
+  }
+
+  #dodgeBtn {
+    position: absolute;
+    padding: 10px 20px;
+    font-size: 1em;
+    font-weight: bold;
+    color: #ff4d6d;
+    background: #fff;
+    border: none;
+    border-radius: 50px;
+    cursor: pointer;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.25);
+    transition: transform 0.15s ease, background 0.3s ease, color 0.3s ease;
+    z-index: 10;
+    user-select: none;
+  }
+
+  #dodgeBtn:hover {
+    transform: scale(1.05);
+  }
+
+  #dodgeBtn.caught {
+    background: #ff4d6d;
+    color: #fff;
+    animation: pulse 0.6s ease;
+  }
+
+  @keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.25); }
+    100% { transform: scale(1); }
+  }
+
+  #teaseText {
+    position: absolute;
+    top: 20px;
+    width: 100%;
+    text-align: center;
+    color: #fff;
+    font-size: 1.1em;
+    font-style: italic;
+    text-shadow: 1px 1px 4px rgba(0,0,0,0.25);
+    opacity: 0;
+    transition: opacity 0.4s ease;
+  }
+
+  #teaseText.show {
+    opacity: 1;
+  }
+
+  #reveal {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(255, 77, 109, 0.96);
+    z-index: 100;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 30px;
+    animation: fadeIn 0.6s ease;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  #reveal h2 {
+    color: #fff;
+    font-size: 2em;
+    margin-bottom: 20px;
+    text-shadow: 2px 2px 6px rgba(0,0,0,0.2);
+  }
+
+  #reveal p {
+    color: #fff;
+    font-size: 1.3em;
+    max-width: 600px;
+    line-height: 1.6;
+    text-shadow: 1px 1px 4px rgba(0,0,0,0.2);
+  }
+
+  .heart {
+    position: fixed;
+    top: -10%;
+    font-size: 1.5em;
+    color: #fff;
+    pointer-events: none;
+    animation: fall linear forwards;
+    z-index: 99;
+  }
+
+  @keyframes fall {
+    to {
+      transform: translateY(110vh) rotate(360deg);
+      opacity: 0.2;
+    }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <h1>Hey Keerthi! 💌</h1>
+  <p class="subtitle">There's a little surprise waiting for you... just click the button below (good luck for the first 30 seconds 😏).</p>
+  <div id="teaseText"></div>
+  <button id="dodgeBtn">Click me! 😄</button>
+</div>
+
+<div id="reveal">
+  <h2>You caught it! 🎉💕</h2>
+  <p>
+    Every time I try to put into words how much you mean to me, the words run away from me too —
+    just like that button. But here it is, no more running: I love you more than yesterday,
+    and a little less than tomorrow. Thank you for being my favorite person, my best friend,
+    and my forever partner in everything. 💖<br><br>
+    Happy surprise, my love! 🥰
+  </p>
+</div>
+
+<script>
+  const btn = document.getElementById('dodgeBtn');
+  const teaseText = document.getElementById('teaseText');
+  const reveal = document.getElementById('reveal');
+
+  const teases = [
+    "Nice try! 😜",
+    "Almost got me!",
+    "Not so fast! 🏃‍♀️",
+    "Catch me if you can 💨",
+    "Ooh, close one!",
+    "Keep going, you're getting warmer... maybe 😏"
+  ];
+
+  const DODGE_DURATION_MS = 30000; // how long the button keeps running away
+  const DODGE_RADIUS = 160;        // how close the cursor needs to get to trigger movement
+  const MAX_SPEED = 6;             // px per animation frame at closest range (slow, smooth slide)
+
+  let posX, posY;
+  let mouseX = -9999, mouseY = -9999;
+  let startTime = null;
+  let unlocked = false;
+  let caught = false;
+  let lastTeaseAt = 0;
+
+  function clamp(val, min, max) {
+    return Math.max(min, Math.min(max, val));
+  }
+
+  function initPosition() {
+    const rect = btn.getBoundingClientRect();
+    posX = window.innerWidth / 2 - rect.width / 2;
+    posY = window.innerHeight * 0.65 - rect.height / 2;
+    btn.style.left = posX + 'px';
+    btn.style.top = posY + 'px';
+  }
+
+  function showTease() {
+    teaseText.textContent = teases[Math.floor(Math.random() * teases.length)];
+    teaseText.classList.add('show');
+    clearTimeout(showTease._t);
+    showTease._t = setTimeout(() => teaseText.classList.remove('show'), 1000);
+  }
+
+  function unlockButton() {
+    unlocked = true;
+    teaseText.textContent = "Okay, I'm tired of running... catch me now! 😉";
+    teaseText.classList.add('show');
+  }
+
+  // Hard safety net: instantly relocate the button to whichever of several
+  // random candidate spots ends up farthest from the cursor. This is the
+  // backstop that guarantees the cursor can never rest on the button, even
+  // if it got pushed into a corner or the mouse jumped fast between frames.
+  function jumpAway() {
+    const btnW = btn.offsetWidth;
+    const btnH = btn.offsetHeight;
+    let bestX = posX, bestY = posY, bestDist = -1;
+
+    for (let i = 0; i < 16; i++) {
+      const x = 10 + Math.random() * (window.innerWidth - btnW - 20);
+      const y = 10 + Math.random() * (window.innerHeight - btnH - 20);
+      const cx = x + btnW / 2, cy = y + btnH / 2;
+      const d = Math.hypot(cx - mouseX, cy - mouseY);
+      if (d > bestDist) {
+        bestDist = d;
+        bestX = x;
+        bestY = y;
+      }
+    }
+
+    posX = bestX;
+    posY = bestY;
+    btn.style.left = posX + 'px';
+    btn.style.top = posY + 'px';
+  }
+
+  function tick(now) {
+    if (caught) return;
+    if (startTime === null) startTime = now;
+    const elapsed = now - startTime;
+
+    if (!unlocked && elapsed >= DODGE_DURATION_MS) {
+      unlockButton();
+    }
+
+    if (!unlocked) {
+      const btnW = btn.offsetWidth;
+      const btnH = btn.offsetHeight;
+      const centerX = posX + btnW / 2;
+      const centerY = posY + btnH / 2;
+
+      const dx = centerX - mouseX;
+      const dy = centerY - mouseY;
+      const dist = Math.hypot(dx, dy);
+
+      // Buffer zone around the button — if the cursor is actually inside it
+      // (or within a small margin of it), no amount of gentle sliding is
+      // reliable enough. Teleport away instead of sliding.
+      const overlapping =
+        mouseX > posX - 15 && mouseX < posX + btnW + 15 &&
+        mouseY > posY - 15 && mouseY < posY + btnH + 15;
+
+      if (overlapping) {
+        jumpAway();
+        showTease();
+        lastTeaseAt = now;
+      } else if (dist < DODGE_RADIUS) {
+        const closeness = (DODGE_RADIUS - dist) / DODGE_RADIUS; // 0..1, closer = stronger push
+        const speed = MAX_SPEED * closeness;
+        const nx = dx / dist;
+        const ny = dy / dist;
+
+        posX = clamp(posX + nx * speed, 10, window.innerWidth - btnW - 10);
+        posY = clamp(posY + ny * speed, 10, window.innerHeight - btnH - 10);
+
+        btn.style.left = posX + 'px';
+        btn.style.top = posY + 'px';
+
+        if (now - lastTeaseAt > 1500) {
+          showTease();
+          lastTeaseAt = now;
+        }
+      }
+    }
+
+    requestAnimationFrame(tick);
+  }
+
+  window.addEventListener('load', () => {
+    btn.style.position = 'absolute';
+    initPosition();
+    requestAnimationFrame(tick);
+  });
+
+  document.addEventListener('mousemove', (e) => {
+    mouseX = e.clientX;
+    mouseY = e.clientY;
+  });
+
+  document.addEventListener('touchmove', (e) => {
+    if (!e.touches[0]) return;
+    mouseX = e.touches[0].clientX;
+    mouseY = e.touches[0].clientY;
+  }, { passive: true });
+
+  // Extra backstop: if the browser ever registers an actual hover on the
+  // button while it's still dodging, jump it away immediately.
+  btn.addEventListener('mouseover', () => {
+    if (!unlocked && !caught) {
+      jumpAway();
+      showTease();
+    }
+  });
+
+  window.addEventListener('resize', () => {
+    if (posX === undefined) return;
+    posX = clamp(posX, 10, window.innerWidth - btn.offsetWidth - 10);
+    posY = clamp(posY, 10, window.innerHeight - btn.offsetHeight - 10);
+    btn.style.left = posX + 'px';
+    btn.style.top = posY + 'px';
+  });
+
+  btn.addEventListener('click', () => {
+    if (unlocked && !caught) {
+      caught = true;
+      btn.classList.add('caught');
+      btn.textContent = 'Gotcha! 💖';
+      teaseText.classList.remove('show');
+      launchHearts();
+      setTimeout(() => {
+        reveal.style.display = 'flex';
+      }, 700);
+    }
+  });
+
+  function launchHearts() {
+    const symbols = ['💖', '💕', '💗', '💘', '❤️'];
+    for (let i = 0; i < 40; i++) {
+      setTimeout(() => {
+        const heart = document.createElement('div');
+        heart.className = 'heart';
+        heart.textContent = symbols[Math.floor(Math.random() * symbols.length)];
+        heart.style.left = Math.random() * 100 + 'vw';
+        heart.style.animationDuration = (2.5 + Math.random() * 2) + 's';
+        heart.style.fontSize = (1 + Math.random() * 1.5) + 'em';
+        document.body.appendChild(heart);
+        setTimeout(() => heart.remove(), 5000);
+      }, i * 60);
+    }
+  }
+</script>
+
+</body>
+</html>
