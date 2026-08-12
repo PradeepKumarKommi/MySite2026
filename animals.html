@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Animal Friends</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    height: 100%;
+    overflow: hidden;
+    font-family: 'Baloo 2', 'Segoe UI', sans-serif;
+    background: linear-gradient(120deg, #4fd1ff, #7f5bff, #ff5da2, #ffd93d, #4fd1ff);
+    background-size: 500% 500%;
+    animation: candyShift 16s ease infinite;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  @keyframes candyShift {
+    0%   { background-position: 0% 50%; }
+    50%  { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+
+  .sky {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    overflow: hidden;
+  }
+
+  .twinkle {
+    position: absolute;
+    color: #fff;
+    opacity: 0.7;
+    animation: twinkle 2.4s ease-in-out infinite;
+    filter: drop-shadow(0 0 4px rgba(255,255,255,0.8));
+  }
+
+  @keyframes twinkle {
+    0%, 100% { opacity: 0.2; transform: scale(0.8); }
+    50%      { opacity: 0.85; transform: scale(1.15); }
+  }
+
+  .stage {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    height: 100%;
+    height: 100dvh;
+  }
+
+  .topbar {
+    position: fixed;
+    top: max(14px, env(safe-area-inset-top));
+    left: 0;
+    right: 0;
+    z-index: 3;
+    text-align: center;
+    pointer-events: none;
+  }
+
+  .topbar h1 {
+    margin: 0;
+    font-size: clamp(1.1em, 5vw, 1.7em);
+    font-weight: 800;
+    color: #fff;
+    text-shadow: 0 3px 10px rgba(0,0,0,0.25);
+  }
+
+  #promptLabel {
+    position: fixed;
+    bottom: max(24px, env(safe-area-inset-bottom));
+    left: 0;
+    right: 0;
+    z-index: 3;
+    text-align: center;
+    font-size: clamp(1.3em, 6.5vw, 2.2em);
+    font-weight: 800;
+    color: #fff;
+    text-shadow: 0 4px 14px rgba(0,0,0,0.3);
+    letter-spacing: 0.5px;
+    pointer-events: none;
+    padding: 0 12px;
+  }
+
+  #promptLabel.pop {
+    animation: labelPop 0.4s ease;
+  }
+
+  @keyframes labelPop {
+    0%   { transform: scale(0.6); opacity: 0; }
+    60%  { transform: scale(1.12); opacity: 1; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+
+  .animal-btn {
+    position: absolute;
+    z-index: 4;
+    border: none;
+    background: rgba(255,255,255,0.24);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    border-radius: 50%;
+    width: clamp(66px, 15vw, 110px);
+    height: clamp(66px, 15vw, 110px);
+    font-size: clamp(2em, 8vw, 3.4em);
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 8px 22px rgba(0,0,0,0.18), inset 0 0 0 3px rgba(255,255,255,0.4);
+    -webkit-tap-highlight-color: transparent;
+    transform: translate(-50%, -50%);
+    will-change: left, top;
+  }
+
+  .animal-btn.right {
+    animation: correctPop 0.7s ease forwards;
+    pointer-events: none;
+  }
+
+  @keyframes correctPop {
+    0%   { transform: translate(-50%,-50%) scale(1) rotate(0deg); }
+    35%  { transform: translate(-50%,-50%) scale(1.4) rotate(-10deg); box-shadow: 0 0 0 10px rgba(107,255,140,0.4), 0 8px 22px rgba(0,0,0,0.18); }
+    70%  { transform: translate(-50%,-50%) scale(1.2) rotate(8deg); }
+    100% { transform: translate(-50%,-50%) scale(0) rotate(20deg); opacity: 0; }
+  }
+
+  .animal-btn.wrong {
+    animation: shake 0.45s ease;
+  }
+
+  @keyframes shake {
+    0%, 100% { transform: translate(-50%,-50%) rotate(0deg); }
+    20%  { transform: translate(-50%,-50%) translateX(-8px) rotate(-8deg); }
+    40%  { transform: translate(-50%,-50%) translateX(8px) rotate(8deg); }
+    60%  { transform: translate(-50%,-50%) translateX(-6px) rotate(-6deg); }
+    80%  { transform: translate(-50%,-50%) translateX(6px) rotate(6deg); }
+  }
+
+  .particle {
+    position: fixed;
+    pointer-events: none;
+    z-index: 6;
+  }
+
+  .confetti {
+    width: 10px;
+    height: 14px;
+    border-radius: 2px;
+  }
+
+  .star-bit {
+    font-size: 1.6em;
+    filter: drop-shadow(0 0 6px rgba(255,255,255,0.6));
+  }
+
+  #startOverlay {
+    position: fixed;
+    inset: 0;
+    z-index: 20;
+    background: linear-gradient(135deg, #7f5bff, #ff5da2);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 30px;
+  }
+
+  #startOverlay h1 {
+    color: #fff;
+    font-size: clamp(1.8em, 8vw, 2.8em);
+    margin: 0 0 10px;
+    text-shadow: 0 4px 14px rgba(0,0,0,0.3);
+  }
+
+  #startOverlay p {
+    color: #fff;
+    font-size: clamp(1em, 4vw, 1.2em);
+    margin: 0 0 28px;
+    opacity: 0.92;
+    max-width: 460px;
+  }
+
+  #startBtn {
+    font-family: 'Baloo 2', sans-serif;
+    font-weight: 800;
+    font-size: clamp(1.1em, 5vw, 1.4em);
+    padding: 16px 42px;
+    border: none;
+    border-radius: 50px;
+    background: #fff;
+    color: #ff4d6d;
+    cursor: pointer;
+    box-shadow: 0 10px 26px rgba(0,0,0,0.25);
+    animation: bob 1.6s ease-in-out infinite;
+  }
+
+  @keyframes bob {
+    0%, 100% { transform: translateY(0); }
+    50%      { transform: translateY(-8px); }
+  }
+
+  #soundToggle {
+    position: fixed;
+    top: max(14px, env(safe-area-inset-top));
+    right: max(14px, env(safe-area-inset-right));
+    z-index: 21;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(255,255,255,0.28);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    font-size: 1.2em;
+    cursor: pointer;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.2);
+  }
+</style>
+</head>
+<body>
+
+<div class="sky" id="sky"></div>
+
+<button id="soundToggle" aria-label="Toggle sound">🔊</button>
+
+<div class="topbar"><h1>🐾 Animal Friends 🐾</h1></div>
+
+<div class="stage" id="stage">
+  <div id="promptLabel"></div>
+</div>
+
+<div id="startOverlay">
+  <h1>🐾 Animal Friends 🐾</h1>
+  <p>All the animals will float around the screen. Listen for the name I call out, then tap the matching animal!</p>
+  <button id="startBtn">▶️ Start!</button>
+</div>
+
+<script>
+  const sky = document.getElementById('sky');
+  const stage = document.getElementById('stage');
+  const promptLabel = document.getElementById('promptLabel');
+  const startOverlay = document.getElementById('startOverlay');
+  const startBtn = document.getElementById('startBtn');
+  const soundToggle = document.getElementById('soundToggle');
+
+  const ANIMAL_POOL = [
+    { name: 'Dog',      emoji: '🐶', sound: 'Woof woof!' },
+    { name: 'Cat',      emoji: '🐱', sound: 'Meow!' },
+    { name: 'Cow',      emoji: '🐮', sound: 'Moo!' },
+    { name: 'Pig',      emoji: '🐷', sound: 'Oink oink!' },
+    { name: 'Lion',     emoji: '🦁', sound: 'Roar!' },
+    { name: 'Elephant', emoji: '🐘', sound: 'Toot!' },
+    { name: 'Frog',     emoji: '🐸', sound: 'Ribbit!' },
+    { name: 'Chicken',  emoji: '🐔', sound: 'Cluck cluck!' },
+    { name: 'Horse',    emoji: '🐴', sound: 'Neigh!' },
+    { name: 'Duck',     emoji: '🦆', sound: 'Quack quack!' },
+    { name: 'Sheep',    emoji: '🐑', sound: 'Baa!' },
+    { name: 'Owl',      emoji: '🦉', sound: 'Hoo hoo!' },
+    { name: 'Bear',     emoji: '🐻', sound: 'Grr!' },
+    { name: 'Monkey',   emoji: '🐵', sound: 'Ooh ooh ah ah!' },
+    { name: 'Bee',      emoji: '🐝', sound: 'Buzz buzz!' },
+    { name: 'Rabbit',   emoji: '🐰', sound: 'Hop hop!' },
+    { name: 'Penguin',  emoji: '🐧', sound: 'Waddle waddle!' },
+    { name: 'Fish',     emoji: '🐟', sound: 'Blub blub!' }
+  ];
+
+  const PRAISES = ['Yay!', 'Great job!', 'You got it!', 'Awesome!', 'Well done!', 'Woohoo!'];
+  const TRY_AGAIN = ['Oops, try again!', 'Not quite, try again!', 'Almost! Try again!', 'Nope, keep looking!'];
+  const CONFETTI_COLORS = ['#ff5da2', '#ffd93d', '#4fd1ff', '#7f5bff', '#ff9a3c', '#6bff8c'];
+
+  function rand(min, max) { return Math.random() * (max - min) + min; }
+  function choice(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+  function article(word) { return /^[aeiou]/i.test(word) ? 'an' : 'a'; }
+
+  function shuffle(arr) {
+    const a = arr.slice();
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+
+  let soundOn = true;
+  let audioCtx = null;
+  let bubbles = [];        // { data, el, x, y, vx, vy, size }
+  let target = null;
+  let awaitingAnswer = false;
+  let repeatTimer = null;
+  let rafId = null;
+
+  // ---------- Background twinkles ----------
+  function spawnTwinkle() {
+    const t = document.createElement('div');
+    t.className = 'twinkle';
+    t.textContent = choice(['✨', '⭐', '💫']);
+    t.style.left = rand(0, 100) + 'vw';
+    t.style.top = rand(0, 90) + 'vh';
+    t.style.fontSize = rand(0.7, 1.6) + 'em';
+    t.style.animationDuration = rand(1.6, 3.2) + 's';
+    sky.appendChild(t);
+    setTimeout(() => t.remove(), 6000);
+  }
+  setInterval(spawnTwinkle, 600);
+  for (let i = 0; i < 8; i++) setTimeout(spawnTwinkle, i * 150);
+
+  // ---------- Sound ----------
+  function getAudioCtx() {
+    if (!audioCtx) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      audioCtx = new AC();
+    }
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    return audioCtx;
+  }
+
+  function playTone(ctx, freq, startTime, duration, type, peakGain) {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, startTime);
+    gain.gain.setValueAtTime(0.0001, startTime);
+    gain.gain.exponentialRampToValueAtTime(peakGain, startTime + 0.015);
+    gain.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
+    osc.connect(gain).connect(ctx.destination);
+    osc.start(startTime);
+    osc.stop(startTime + duration + 0.03);
+  }
+
+  function createNoiseBuffer(ctx, duration) {
+    const bufferSize = Math.max(1, Math.floor(ctx.sampleRate * duration));
+    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+    return buffer;
+  }
+
+  // One "clap" = a short burst of filtered noise, snappy attack, quick decay.
+  function playClapBurst(ctx, startTime) {
+    const noise = ctx.createBufferSource();
+    noise.buffer = createNoiseBuffer(ctx, 0.14);
+
+    const bandpass = ctx.createBiquadFilter();
+    bandpass.type = 'bandpass';
+    bandpass.frequency.value = rand(1200, 1800);
+    bandpass.Q.value = 0.7;
+
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.0001, startTime);
+    gain.gain.exponentialRampToValueAtTime(0.9, startTime + 0.004);
+    gain.gain.exponentialRampToValueAtTime(0.0001, startTime + 0.12);
+
+    noise.connect(bandpass).connect(gain).connect(ctx.destination);
+    noise.start(startTime);
+    noise.stop(startTime + 0.15);
+  }
+
+  // A little round of applause for a correct answer — a few quick clap
+  // bursts with slightly randomized timing so it doesn't sound too mechanical.
+  function playClapSound() {
+    if (!soundOn) return;
+    const ctx = getAudioCtx();
+    const now = ctx.currentTime;
+    [0, 0.1, 0.19, 0.3, 0.42].forEach(t => {
+      playClapBurst(ctx, now + t + rand(-0.015, 0.015));
+    });
+  }
+
+  // A harsh game-show-style "wrong answer" buzzer: two slightly detuned
+  // sawtooth oscillators beating against each other through a low-pass
+  // filter for a buzzy, unmistakably "nope" sound.
+  function playBuzzer() {
+    if (!soundOn) return;
+    const ctx = getAudioCtx();
+    const now = ctx.currentTime;
+    const duration = 0.45;
+
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.value = 900;
+
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.exponentialRampToValueAtTime(0.25, now + 0.02);
+    gain.gain.setValueAtTime(0.25, now + duration - 0.08);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+
+    filter.connect(gain).connect(ctx.destination);
+
+    [140, 144].forEach(freq => {
+      const osc = ctx.createOscillator();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(freq, now);
+      osc.connect(filter);
+      osc.start(now);
+      osc.stop(now + duration + 0.03);
+    });
+  }
+
+  function speak(text) {
+    if (!soundOn || !('speechSynthesis' in window)) return;
+    window.speechSynthesis.cancel();
+    const utter = new SpeechSynthesisUtterance(text);
+    utter.rate = 0.95;
+    utter.pitch = 1.15;
+    window.speechSynthesis.speak(utter);
+  }
+
+  soundToggle.addEventListener('click', () => {
+    soundOn = !soundOn;
+    soundToggle.textContent = soundOn ? '🔊' : '🔇';
+    if (!soundOn) window.speechSynthesis.cancel();
+    else getAudioCtx();
+  });
+
+  // ---------- Reward particles ----------
+  function confettiBurst(x, y) {
+    for (let i = 0; i < 22; i++) {
+      const p = document.createElement('div');
+      p.className = 'particle confetti';
+      p.style.left = x + 'px';
+      p.style.top = y + 'px';
+      p.style.background = choice(CONFETTI_COLORS);
+
+      const angle = rand(0, Math.PI * 2);
+      const dist = rand(70, 200);
+      const dx = Math.cos(angle) * dist;
+      const dy = Math.sin(angle) * dist - rand(30, 90);
+      const rot = rand(180, 720) * (Math.random() < 0.5 ? -1 : 1);
+      const dur = rand(0.8, 1.3);
+
+      document.body.appendChild(p);
+      p.animate([
+        { transform: 'translate(-50%,-50%) translate(0,0) rotate(0deg)', opacity: 1 },
+        { transform: `translate(-50%,-50%) translate(${dx}px, ${dy}px) rotate(${rot}deg)`, opacity: 1, offset: 0.6 },
+        { transform: `translate(-50%,-50%) translate(${dx * 1.15}px, ${dy + 150}px) rotate(${rot * 1.3}deg)`, opacity: 0 }
+      ], { duration: dur * 1000, easing: 'cubic-bezier(.2,.7,.3,1)' });
+
+      setTimeout(() => p.remove(), dur * 1000 + 50);
+    }
+  }
+
+  function starBurst(x, y) {
+    for (let i = 0; i < 8; i++) {
+      const p = document.createElement('div');
+      p.className = 'particle star-bit';
+      p.textContent = choice(['⭐', '✨', '💫']);
+      p.style.left = x + 'px';
+      p.style.top = y + 'px';
+
+      const angle = (Math.PI * 2 * i) / 8 + rand(-0.2, 0.2);
+      const dist = rand(50, 120);
+      const dx = Math.cos(angle) * dist;
+      const dy = Math.sin(angle) * dist;
+      const dur = rand(0.6, 0.9);
+
+      document.body.appendChild(p);
+      p.animate([
+        { transform: 'translate(-50%,-50%) translate(0,0) scale(0.4)', opacity: 1 },
+        { transform: `translate(-50%,-50%) translate(${dx}px, ${dy}px) scale(1.1)`, opacity: 1, offset: 0.6 },
+        { transform: `translate(-50%,-50%) translate(${dx}px, ${dy}px) scale(0.3)`, opacity: 0 }
+      ], { duration: dur * 1000, easing: 'ease-out' });
+
+      setTimeout(() => p.remove(), dur * 1000 + 50);
+    }
+  }
+
+  // ---------- Bubble field setup ----------
+  function bubbleCount() {
+    const w = window.innerWidth;
+    if (w < 480) return 6;
+    if (w < 900) return 8;
+    return 10;
+  }
+
+  function boundsForSize(size) {
+    return {
+      minX: size / 2 + 10,
+      maxX: window.innerWidth - size / 2 - 10,
+      minY: 90,                                  // clear of the title
+      maxY: window.innerHeight - 130             // clear of the prompt label
+    };
+  }
+
+  function buildBubbles() {
+    const chosen = shuffle(ANIMAL_POOL).slice(0, bubbleCount());
+    const n = chosen.length;
+    const cols = Math.ceil(Math.sqrt(n * (window.innerWidth / window.innerHeight)));
+    const rows = Math.ceil(n / cols);
+    const cellW = window.innerWidth / cols;
+    const usableH = window.innerHeight - 90 - 130;
+    const cellH = usableH / rows;
+    const cells = shuffle(Array.from({ length: cols * rows }, (_, i) => i)).slice(0, n);
+
+    bubbles = chosen.map((data, i) => {
+      const el = document.createElement('button');
+      el.className = 'animal-btn';
+      el.textContent = data.emoji;
+      el.setAttribute('aria-label', data.name);
+      stage.appendChild(el);
+
+      const cell = cells[i];
+      const col = cell % cols;
+      const row = Math.floor(cell / cols);
+      const cx = col * cellW + cellW / 2 + rand(-cellW * 0.25, cellW * 0.25);
+      const cy = 90 + row * cellH + cellH / 2 + rand(-cellH * 0.2, cellH * 0.2);
+
+      const speed = rand(0.12, 0.35);
+      const angle = rand(0, Math.PI * 2);
+
+      const b = {
+        data, el,
+        x: cx, y: cy,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        size: el.offsetWidth || 90
+      };
+      el.style.left = b.x + 'px';
+      el.style.top = b.y + 'px';
+
+      el.addEventListener('pointerdown', () => onBubbleClick(b));
+      return b;
+    });
+  }
+
+  function clearBubbles() {
+    bubbles.forEach(b => b.el.remove());
+    bubbles = [];
+  }
+
+  // ---------- Slow drifting "bubble" motion ----------
+  function tick() {
+    bubbles.forEach(b => {
+      // occasionally nudge direction so the drift feels alive, not robotic
+      if (Math.random() < 0.01) {
+        b.vx += rand(-0.08, 0.08);
+        b.vy += rand(-0.08, 0.08);
+        const speed = Math.hypot(b.vx, b.vy);
+        const maxSpeed = 0.4;
+        if (speed > maxSpeed) {
+          b.vx = (b.vx / speed) * maxSpeed;
+          b.vy = (b.vy / speed) * maxSpeed;
+        }
+      }
+
+      b.x += b.vx;
+      b.y += b.vy;
+
+      const { minX, maxX, minY, maxY } = boundsForSize(b.size);
+      if (b.x < minX) { b.x = minX; b.vx = Math.abs(b.vx); }
+      if (b.x > maxX) { b.x = maxX; b.vx = -Math.abs(b.vx); }
+      if (b.y < minY) { b.y = minY; b.vy = Math.abs(b.vy); }
+      if (b.y > maxY) { b.y = maxY; b.vy = -Math.abs(b.vy); }
+
+      b.el.style.left = b.x + 'px';
+      b.el.style.top = b.y + 'px';
+    });
+
+    rafId = requestAnimationFrame(tick);
+  }
+
+  // ---------- Round logic ----------
+  function askForTarget() {
+    let next;
+    do { next = choice(bubbles); } while (next === target && bubbles.length > 1);
+    target = next;
+    awaitingAnswer = true;
+
+    promptLabel.textContent = `Find the ${target.data.name}! 🔍`;
+    promptLabel.classList.remove('pop');
+    void promptLabel.offsetWidth;
+    promptLabel.classList.add('pop');
+
+    speak(`Where is the ${target.data.name}?`);
+
+    clearInterval(repeatTimer);
+    repeatTimer = setInterval(() => {
+      if (awaitingAnswer) speak(`Find the ${target.data.name}.`);
+    }, 6000);
+  }
+
+  function onBubbleClick(b) {
+    if (!awaitingAnswer) return;
+
+    const rect = b.el.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+
+    if (b === target) {
+      awaitingAnswer = false;
+      clearInterval(repeatTimer);
+      b.el.classList.add('right');
+      playClapSound();
+      confettiBurst(cx, cy);
+      starBurst(cx, cy);
+      speak(`${choice(PRAISES)} That's ${article(b.data.name)} ${b.data.name}! ${b.data.sound}`);
+
+      setTimeout(() => {
+        // replace the caught bubble with a fresh one so the field stays full
+        b.el.remove();
+        bubbles = bubbles.filter(x => x !== b);
+        addFreshBubble();
+        askForTarget();
+      }, 1200);
+    } else {
+      playBuzzer();
+      b.el.classList.remove('wrong');
+      void b.el.offsetWidth;
+      b.el.classList.add('wrong');
+      speak(choice(TRY_AGAIN));
+    }
+  }
+
+  function addFreshBubble() {
+    const used = new Set(bubbles.map(b => b.data.name));
+    const options = ANIMAL_POOL.filter(a => !used.has(a.name));
+    const data = options.length ? choice(options) : choice(ANIMAL_POOL);
+
+    const el = document.createElement('button');
+    el.className = 'animal-btn';
+    el.textContent = data.emoji;
+    el.setAttribute('aria-label', data.name);
+    stage.appendChild(el);
+
+    const size = el.offsetWidth || 90;
+    const { minX, maxX, minY, maxY } = boundsForSize(size);
+    const speed = rand(0.12, 0.35);
+    const angle = rand(0, Math.PI * 2);
+
+    const b = {
+      data, el,
+      x: rand(minX, maxX),
+      y: rand(minY, maxY),
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed,
+      size
+    };
+    el.style.left = b.x + 'px';
+    el.style.top = b.y + 'px';
+    el.addEventListener('pointerdown', () => onBubbleClick(b));
+    bubbles.push(b);
+  }
+
+  window.addEventListener('resize', () => {
+    bubbles.forEach(b => {
+      const { minX, maxX, minY, maxY } = boundsForSize(b.size);
+      b.x = Math.min(Math.max(b.x, minX), maxX);
+      b.y = Math.min(Math.max(b.y, minY), maxY);
+    });
+  });
+
+  startBtn.addEventListener('click', () => {
+    getAudioCtx();
+    speak(' '); // tiny unlock utterance so mobile browsers allow speech later
+    startOverlay.style.display = 'none';
+
+    buildBubbles();
+    cancelAnimationFrame(rafId);
+    tick();
+    askForTarget();
+  });
+</script>
+
+</body>
+</html>
