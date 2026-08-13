@@ -1,0 +1,981 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Kids Paint</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    min-height: 100%;
+    font-family: 'Baloo 2', 'Segoe UI', sans-serif;
+    background: linear-gradient(180deg, #eaf6ff, #dcecff 40%, #e9f7ff);
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  .app {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) 24px max(12px, env(safe-area-inset-left));
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  /* ---------- Top bar ---------- */
+  .topbar {
+    background: rgba(255,255,255,0.85);
+    border-radius: 20px;
+    box-shadow: 0 6px 20px rgba(80,120,200,0.15);
+    padding: 10px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  .icon-btn {
+    flex: 0 0 auto;
+    width: 42px;
+    height: 42px;
+    border: none;
+    border-radius: 14px;
+    background: #f0f4ff;
+    font-size: 1.25em;
+    cursor: pointer;
+    box-shadow: 0 3px 8px rgba(80,120,200,0.18);
+  }
+
+  .title-wrap { text-align: center; flex: 1; }
+
+  .title-wrap h1 {
+    margin: 0;
+    font-size: clamp(1.15em, 4.6vw, 1.7em);
+    font-weight: 800;
+    background: linear-gradient(90deg, #ff5da2, #ff9a3c, #ffd93d, #6bff8c, #4fd1ff, #7f5bff);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .title-wrap p {
+    margin: 2px 0 0;
+    font-size: clamp(0.75em, 2.6vw, 0.95em);
+    font-weight: 700;
+    color: #5b6b8c;
+  }
+
+  /* ---------- Main row: toolbar + canvas ---------- */
+  .main-row {
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .panel {
+    flex: 0 0 auto;
+    width: 260px;
+    background: rgba(255,255,255,0.9);
+    border-radius: 20px;
+    box-shadow: 0 6px 20px rgba(80,120,200,0.15);
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .panel-label {
+    font-size: 0.85em;
+    font-weight: 800;
+    color: #46567a;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+  }
+
+  .panel-label.light { color: #2e6da4; }
+
+  .swatch-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 8px;
+  }
+
+  .swatch {
+    width: 100%;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    border: 3px solid #fff;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    cursor: pointer;
+    position: relative;
+  }
+
+  .swatch.active::after {
+    content: '✓';
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 0.9em;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+  }
+
+  .swatch.light-color.active::after { color: #333; text-shadow: none; }
+
+  .size-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+  }
+
+  .size-btn {
+    flex: 1;
+    aspect-ratio: 1;
+    max-width: 40px;
+    border: none;
+    border-radius: 10px;
+    background: #f0f4ff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+  }
+
+  .size-btn.active { background: #cfe0ff; box-shadow: inset 0 0 0 2px #4f6bff; }
+
+  .size-dot { border-radius: 50%; background: #46567a; }
+
+  .tool-row {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 6px;
+  }
+
+  .tool-btn {
+    border: none;
+    border-radius: 12px;
+    background: #f0f4ff;
+    padding: 8px 2px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    font-size: 1.15em;
+    cursor: pointer;
+    font-family: 'Baloo 2', sans-serif;
+  }
+
+  .tool-btn span {
+    font-size: 0.42em;
+    font-weight: 700;
+    color: #46567a;
+    text-transform: uppercase;
+  }
+
+  .tool-btn.active { background: #4f6bff; }
+  .tool-btn.active span { color: #fff; }
+
+  .tool-btn:disabled { opacity: 0.4; cursor: default; }
+
+  .panel-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .action-btn {
+    border: none;
+    border-radius: 14px;
+    padding: 12px 10px;
+    font-family: 'Baloo 2', sans-serif;
+    font-weight: 800;
+    font-size: 0.95em;
+    color: #fff;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.18);
+  }
+
+  .action-btn.random { background: linear-gradient(135deg, #4fd1ff, #4f6bff); }
+  .action-btn.clear  { background: linear-gradient(135deg, #b06bff, #7f5bff); }
+  .action-btn.save   { background: linear-gradient(135deg, #6bff8c, #2ecf6b); }
+
+  /* ---------- Canvas ---------- */
+  .canvas-card {
+    flex: 1 1 480px;
+    min-width: 280px;
+    background: #fff;
+    border-radius: 20px;
+    box-shadow: 0 6px 20px rgba(80,120,200,0.15);
+    padding: 10px;
+  }
+
+  .picture-stage {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    border-radius: 14px;
+    overflow: hidden;
+    background: #fff;
+    box-shadow: inset 0 0 0 3px #eef2ff;
+  }
+
+  #pictureSvg, #brushCanvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+  }
+
+  #brushCanvas { touch-action: none; cursor: crosshair; }
+
+  .detail { pointer-events: none; }
+  .fillable { cursor: pointer; }
+
+  /* ---------- Gallery ---------- */
+  .gallery-section {
+    background: rgba(255,255,255,0.85);
+    border-radius: 20px;
+    box-shadow: 0 6px 20px rgba(80,120,200,0.15);
+    padding: 14px 16px;
+  }
+
+  .gallery-row {
+    display: flex;
+    gap: 12px;
+    overflow-x: auto;
+    padding: 4px 2px 8px;
+  }
+
+  .gallery-card {
+    flex: 0 0 auto;
+    width: 130px;
+    background: #f7faff;
+    border-radius: 14px;
+    padding: 8px;
+    text-align: center;
+    cursor: pointer;
+    border: 3px solid transparent;
+  }
+
+  .gallery-card.active { border-color: #4f6bff; background: #eaf1ff; }
+
+  .gallery-card svg {
+    width: 100%;
+    aspect-ratio: 4/3;
+    border-radius: 8px;
+    background: #fff;
+    box-shadow: inset 0 0 0 2px #e2e8f7;
+  }
+
+  .gallery-card .name {
+    margin-top: 6px;
+    font-size: 0.75em;
+    font-weight: 700;
+    color: #46567a;
+  }
+
+  /* ---------- Toast ---------- */
+  #toast {
+    position: fixed;
+    top: max(70px, calc(env(safe-area-inset-top) + 60px));
+    left: 50%;
+    transform: translateX(-50%) translateY(-10px);
+    z-index: 25;
+    background: rgba(40,50,80,0.85);
+    color: #fff;
+    font-weight: 700;
+    padding: 10px 22px;
+    border-radius: 50px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    white-space: nowrap;
+  }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  @media (max-width: 760px) {
+    .panel { width: 100%; }
+    .canvas-card { flex: 1 1 100%; }
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <div class="topbar">
+    <button id="homeBtn" class="icon-btn" aria-label="Home">🏠</button>
+    <div class="title-wrap">
+      <h1>🎨 Kids Paint</h1>
+      <p>Let's Paint &amp; Color! 🖌️</p>
+    </div>
+    <button id="soundToggle" class="icon-btn" aria-label="Toggle sound">🔊</button>
+  </div>
+
+  <div class="main-row">
+    <div class="panel">
+      <div>
+        <div class="panel-label">Colors</div>
+        <div class="swatch-grid" id="colorGrid"></div>
+      </div>
+
+      <div>
+        <div class="panel-label">Brush Size</div>
+        <div class="size-row" id="sizeRow"></div>
+      </div>
+
+      <div>
+        <div class="panel-label">Tools</div>
+        <div class="tool-row" id="toolRow">
+          <button class="tool-btn active" data-tool="brush" title="Brush">✏️<span>Brush</span></button>
+          <button class="tool-btn" data-tool="fill" title="Fill">🪣<span>Fill</span></button>
+          <button class="tool-btn" data-tool="erase" title="Eraser">🧽<span>Eraser</span></button>
+          <button class="tool-btn" id="undoBtn" title="Undo">↩️<span>Undo</span></button>
+          <button class="tool-btn" id="redoBtn" title="Redo">↪️<span>Redo</span></button>
+        </div>
+      </div>
+
+      <div class="panel-actions">
+        <button id="randomBtn" class="action-btn random">🎲 Random Picture</button>
+        <button id="clearBtn" class="action-btn clear">🧹 Clear All</button>
+        <button id="saveBtn" class="action-btn save">💾 Save</button>
+      </div>
+    </div>
+
+    <div class="canvas-card">
+      <div class="picture-stage" id="pictureStage">
+        <svg id="pictureSvg" viewBox="0 0 400 300" preserveAspectRatio="xMidYMid meet"></svg>
+        <canvas id="brushCanvas"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <div class="gallery-section">
+    <div class="panel-label light">Choose a Picture 🖼️</div>
+    <div class="gallery-row" id="galleryRow"></div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+  // ============================================================
+  // Picture data — each is hand-drawn as plain SVG shapes.
+  // ".fillable" shapes are colorable regions (data-group ties
+  // multi-part regions, like a cloud made of 3 circles, together).
+  // ".detail" shapes are decorative outline/accent marks drawn on
+  // top and are never clickable/fillable.
+  // ============================================================
+  const F = 'class="fillable" fill="#ffffff" stroke="#2b2b2b" stroke-width="6" stroke-linejoin="round" stroke-linecap="round"';
+  const D = 'class="detail" pointer-events="none"';
+
+  const PICTURES = [
+    {
+      id: 'puppy',
+      name: 'Puppy & House',
+      svg: `
+        <rect data-group="sky" ${F} x="0" y="0" width="400" height="210"/>
+        <rect data-group="ground" ${F} x="0" y="210" width="400" height="90"/>
+
+        <circle data-group="cloud1" ${F} cx="55" cy="58" r="16"/>
+        <circle data-group="cloud1" ${F} cx="75" cy="48" r="20"/>
+        <circle data-group="cloud1" ${F} cx="95" cy="58" r="16"/>
+
+        <circle data-group="cloud2" ${F} cx="240" cy="42" r="12"/>
+        <circle data-group="cloud2" ${F} cx="255" cy="35" r="15"/>
+        <circle data-group="cloud2" ${F} cx="270" cy="42" r="12"/>
+
+        <circle data-group="sun" ${F} cx="345" cy="55" r="28"/>
+        <g ${D} stroke="#2b2b2b" stroke-width="4" stroke-linecap="round">
+          <line x1="375" y1="55" x2="387" y2="55"/>
+          <line x1="366" y1="76" x2="375" y2="85"/>
+          <line x1="345" y1="85" x2="345" y2="97"/>
+          <line x1="324" y1="76" x2="315" y2="85"/>
+          <line x1="315" y1="55" x2="303" y2="55"/>
+          <line x1="324" y1="34" x2="315" y2="25"/>
+          <line x1="345" y1="25" x2="345" y2="13"/>
+          <line x1="366" y1="34" x2="375" y2="25"/>
+        </g>
+        <circle ${D} cx="337" cy="52" r="2.5" fill="#2b2b2b"/>
+        <circle ${D} cx="353" cy="52" r="2.5" fill="#2b2b2b"/>
+        <path ${D} d="M330,62 Q345,72 360,62" fill="none" stroke="#2b2b2b" stroke-width="3" stroke-linecap="round"/>
+
+        <circle data-group="tree-leaves" ${F} cx="55" cy="185" r="40"/>
+        <rect data-group="tree-trunk" ${F} x="46" y="200" width="18" height="45" rx="4"/>
+
+        <polygon data-group="house-roof" ${F} points="140,145 215,90 290,145"/>
+        <rect data-group="house-body" ${F} x="150" y="145" width="130" height="95"/>
+        <rect data-group="house-chimney" ${F} x="255" y="100" width="18" height="40"/>
+        <rect data-group="house-door" ${F} x="195" y="185" width="32" height="55" rx="6"/>
+        <rect data-group="house-window" ${F} x="160" y="160" width="30" height="30" rx="4"/>
+        <g ${D} stroke="#2b2b2b" stroke-width="3">
+          <line x1="175" y1="160" x2="175" y2="190"/>
+          <line x1="160" y1="175" x2="190" y2="175"/>
+        </g>
+
+        <circle data-group="bush1" ${F} cx="140" cy="232" r="18"/>
+        <circle data-group="bush1" ${F} cx="158" cy="238" r="22"/>
+        <circle data-group="bush2" ${F} cx="290" cy="232" r="18"/>
+        <circle data-group="bush2" ${F} cx="305" cy="238" r="20"/>
+
+        <polygon data-group="walkway" ${F} points="203,240 227,240 235,300 195,300"/>
+
+        <circle data-group="flower1" ${F} cx="100" cy="269" r="6"/>
+        <circle data-group="flower1" ${F} cx="100" cy="281" r="6"/>
+        <circle data-group="flower1" ${F} cx="94" cy="275" r="6"/>
+        <circle data-group="flower1" ${F} cx="106" cy="275" r="6"/>
+        <circle ${D} cx="100" cy="275" r="3" fill="#ffd93d"/>
+
+        <circle data-group="flower2" ${F} cx="230" cy="274" r="6"/>
+        <circle data-group="flower2" ${F} cx="230" cy="286" r="6"/>
+        <circle data-group="flower2" ${F} cx="224" cy="280" r="6"/>
+        <circle data-group="flower2" ${F} cx="236" cy="280" r="6"/>
+        <circle ${D} cx="230" cy="280" r="3" fill="#ffd93d"/>
+
+        <circle data-group="flower3" ${F} cx="335" cy="264" r="6"/>
+        <circle data-group="flower3" ${F} cx="335" cy="276" r="6"/>
+        <circle data-group="flower3" ${F} cx="329" cy="270" r="6"/>
+        <circle data-group="flower3" ${F} cx="341" cy="270" r="6"/>
+        <circle ${D} cx="335" cy="270" r="3" fill="#ffd93d"/>
+
+        <path data-group="dog-tail" ${F} d="M290,240 Q322,222 302,198 Q290,214 280,236 Z"/>
+        <ellipse data-group="dog-body" ${F} cx="245" cy="250" rx="48" ry="36"/>
+        <rect data-group="dog-legs" ${F} x="225" y="278" width="14" height="26" rx="6"/>
+        <rect data-group="dog-legs" ${F} x="255" y="278" width="14" height="26" rx="6"/>
+        <ellipse data-group="dog-ear-l" ${F} cx="178" cy="182" rx="12" ry="20" transform="rotate(-20 178 182)"/>
+        <ellipse data-group="dog-ear-r" ${F} cx="222" cy="182" rx="12" ry="20" transform="rotate(20 222 182)"/>
+        <circle data-group="dog-head" ${F} cx="200" cy="205" r="32"/>
+        <ellipse data-group="dog-snout" ${F} cx="185" cy="215" rx="16" ry="12"/>
+        <rect data-group="dog-collar" ${F} x="190" y="232" width="30" height="8" rx="4"/>
+        <circle ${D} cx="190" cy="200" r="3" fill="#2b2b2b"/>
+        <circle ${D} cx="210" cy="200" r="3" fill="#2b2b2b"/>
+        <ellipse ${D} cx="183" cy="213" rx="4" ry="3" fill="#2b2b2b"/>
+        <path ${D} d="M183,218 Q190,224 197,218" fill="none" stroke="#2b2b2b" stroke-width="2.5" stroke-linecap="round"/>
+      `
+    },
+    {
+      id: 'cat',
+      name: 'Kitty & Yarn',
+      svg: `
+        <rect data-group="sky" ${F} x="0" y="0" width="400" height="210"/>
+        <rect data-group="ground" ${F} x="0" y="210" width="400" height="90"/>
+
+        <circle data-group="sun" ${F} cx="60" cy="50" r="24"/>
+        <g ${D} stroke="#2b2b2b" stroke-width="4" stroke-linecap="round">
+          <line x1="60" y1="18" x2="60" y2="8"/>
+          <line x1="60" y1="82" x2="60" y2="92"/>
+          <line x1="28" y1="50" x2="18" y2="50"/>
+          <line x1="92" y1="50" x2="102" y2="50"/>
+        </g>
+
+        <circle data-group="cloud1" ${F} cx="310" cy="52" r="14"/>
+        <circle data-group="cloud1" ${F} cx="330" cy="44" r="18"/>
+        <circle data-group="cloud1" ${F} cx="350" cy="52" r="14"/>
+
+        <path data-group="cat-tail" ${F} d="M292,258 Q332,248 322,206 Q306,222 296,244 Z"/>
+        <ellipse data-group="cat-body" ${F} cx="200" cy="228" rx="65" ry="48"/>
+        <ellipse data-group="cat-paws" ${F} cx="175" cy="270" rx="14" ry="10"/>
+        <ellipse data-group="cat-paws" ${F} cx="225" cy="270" rx="14" ry="10"/>
+
+        <polygon data-group="cat-ear-l" ${F} points="165,115 150,68 186,104"/>
+        <polygon data-group="cat-ear-r" ${F} points="235,115 250,68 214,104"/>
+        <circle data-group="cat-head" ${F} cx="200" cy="150" r="48"/>
+        <polygon data-group="cat-inner-ear" ${F} points="168,106 161,84 182,101" stroke-width="4"/>
+        <polygon data-group="cat-inner-ear" ${F} points="232,106 239,84 218,101" stroke-width="4"/>
+
+        <ellipse data-group="cat-eyes" ${F} cx="178" cy="150" rx="9" ry="11" stroke-width="4"/>
+        <ellipse data-group="cat-eyes" ${F} cx="222" cy="150" rx="9" ry="11" stroke-width="4"/>
+        <circle ${D} cx="178" cy="152" r="4" fill="#2b2b2b"/>
+        <circle ${D} cx="222" cy="152" r="4" fill="#2b2b2b"/>
+
+        <polygon data-group="cat-nose" ${F} points="200,160 193,169 207,169" stroke-width="3"/>
+        <path ${D} d="M193,171 Q200,177 193,181 M207,171 Q200,177 207,181" fill="none" stroke="#2b2b2b" stroke-width="2.5" stroke-linecap="round"/>
+
+        <g ${D} stroke="#2b2b2b" stroke-width="2.5" stroke-linecap="round">
+          <line x1="163" y1="155" x2="115" y2="148"/>
+          <line x1="163" y1="163" x2="115" y2="163"/>
+          <line x1="163" y1="171" x2="115" y2="178"/>
+          <line x1="237" y1="155" x2="285" y2="148"/>
+          <line x1="237" y1="163" x2="285" y2="163"/>
+          <line x1="237" y1="171" x2="285" y2="178"/>
+        </g>
+
+        <circle data-group="yarn" ${F} cx="310" cy="268" r="26"/>
+        <g ${D} stroke="#2b2b2b" stroke-width="2.5" fill="none">
+          <path d="M290,255 Q310,268 330,255"/>
+          <path d="M286,268 Q310,278 334,268"/>
+          <path d="M290,281 Q310,268 330,281"/>
+        </g>
+
+        <circle data-group="flower1" ${F} cx="90" cy="265" r="6"/>
+        <circle data-group="flower1" ${F} cx="90" cy="277" r="6"/>
+        <circle data-group="flower1" ${F} cx="84" cy="271" r="6"/>
+        <circle data-group="flower1" ${F} cx="96" cy="271" r="6"/>
+        <circle ${D} cx="90" cy="271" r="3" fill="#ffd93d"/>
+      `
+    },
+    {
+      id: 'fish',
+      name: 'Under the Sea',
+      svg: `
+        <rect data-group="water" ${F} x="0" y="0" width="400" height="300"/>
+        <rect data-group="sand" ${F} x="0" y="262" width="400" height="38"/>
+
+        <path data-group="seaweed1" ${F} d="M60,262 C40,224 78,206 55,168 C40,138 68,118 60,92 L76,92 C86,120 58,142 76,170 C90,198 62,226 80,262 Z"/>
+        <path data-group="seaweed2" ${F} d="M340,262 C360,230 328,210 348,178 C360,152 336,132 344,108 L328,108 C320,134 344,154 328,180 C316,206 342,230 326,262 Z"/>
+
+        <circle data-group="bubble1" ${F} cx="150" cy="55" r="9"/>
+        <circle data-group="bubble2" ${F} cx="172" cy="86" r="6"/>
+        <circle data-group="bubble3" ${F} cx="300" cy="45" r="10"/>
+        <circle data-group="bubble4" ${F} cx="322" cy="78" r="7"/>
+
+        <polygon data-group="starfish" ${F} points="330,243 337,261 357,261 341,273 347,294 330,282 313,294 319,273 303,261 323,261"/>
+
+        <polygon data-group="fish-tail" ${F} points="255,150 302,118 302,182"/>
+        <polygon data-group="fish-fin-top" ${F} points="170,102 190,68 212,102"/>
+        <polygon data-group="fish-fin-bottom" ${F} points="170,198 190,228 212,198"/>
+        <ellipse data-group="fish-body" ${F} cx="180" cy="150" rx="75" ry="48"/>
+        <circle data-group="fish-eye" ${F} cx="140" cy="140" r="12" stroke-width="4"/>
+        <circle ${D} cx="136" cy="140" r="5" fill="#2b2b2b"/>
+        <path ${D} d="M105,152 Q95,158 105,164" fill="none" stroke="#2b2b2b" stroke-width="3" stroke-linecap="round"/>
+
+        <polygon data-group="small-fish-tail" ${F} points="65,220 40,205 40,235"/>
+        <ellipse data-group="small-fish-body" ${F} cx="95" cy="220" rx="28" ry="18"/>
+        <circle ${D} cx="108" cy="216" r="3" fill="#2b2b2b"/>
+      `
+    },
+    {
+      id: 'rocket',
+      name: 'Rocket & Stars',
+      svg: `
+        <rect data-group="space" ${F} x="0" y="0" width="400" height="260"/>
+        <rect data-group="ground" ${F} x="0" y="260" width="400" height="40"/>
+
+        <circle data-group="moon" ${F} cx="340" cy="60" r="36"/>
+        <g ${D} stroke="#2b2b2b" stroke-width="3" fill="none">
+          <circle cx="330" cy="50" r="6"/>
+          <circle cx="352" cy="66" r="5"/>
+          <circle cx="326" cy="72" r="4"/>
+        </g>
+
+        <circle data-group="planet" ${F} cx="65" cy="225" r="30"/>
+        <ellipse ${D} cx="65" cy="225" rx="55" ry="14" fill="none" stroke="#2b2b2b" stroke-width="4" transform="rotate(-15 65 225)"/>
+
+        <polygon data-group="star1" ${F} points="130,46 134,58 146,58 136,66 140,78 130,70 120,78 124,66 114,58 126,58" stroke-width="3"/>
+        <polygon data-group="star2" ${F} points="220,30 223,39 232,39 225,45 228,54 220,48 212,54 215,45 208,39 217,39" stroke-width="3"/>
+        <polygon data-group="star3" ${F} points="150,122 153,130 161,130 155,135 157,143 150,138 143,143 145,135 139,130 147,130" stroke-width="3"/>
+        <polygon data-group="star4" ${F} points="300,140 303,149 312,149 305,155 308,164 300,158 292,164 295,155 288,149 297,149" stroke-width="3"/>
+        <polygon data-group="star5" ${F} points="60,130 63,139 72,139 65,145 68,154 60,148 52,154 55,145 48,139 57,139" stroke-width="3"/>
+
+        <path data-group="rocket-flame" ${F} d="M180,240 Q200,282 220,240 Q200,262 180,240 Z"/>
+        <polygon data-group="rocket-fin-l" ${F} points="170,210 138,242 170,242"/>
+        <polygon data-group="rocket-fin-r" ${F} points="230,210 262,242 230,242"/>
+        <path data-group="rocket-body" ${F} d="M200,118 C178,118 168,160 168,202 L168,242 L232,242 L232,202 C232,160 222,118 200,118 Z"/>
+        <circle data-group="rocket-window" ${F} cx="200" cy="172" r="18"/>
+        <circle ${D} cx="186" cy="204" r="3" fill="#2b2b2b"/>
+        <circle ${D} cx="214" cy="204" r="3" fill="#2b2b2b"/>
+      `
+    }
+  ];
+
+  const svgRoot = document.getElementById('pictureSvg');
+  const stage = document.getElementById('pictureStage');
+  const canvas = document.getElementById('brushCanvas');
+  const ctx = canvas.getContext('2d');
+  const colorGrid = document.getElementById('colorGrid');
+  const sizeRow = document.getElementById('sizeRow');
+  const toolRow = document.getElementById('toolRow');
+  const undoBtn = document.getElementById('undoBtn');
+  const redoBtn = document.getElementById('redoBtn');
+  const randomBtn = document.getElementById('randomBtn');
+  const clearBtn = document.getElementById('clearBtn');
+  const saveBtn = document.getElementById('saveBtn');
+  const homeBtn = document.getElementById('homeBtn');
+  const soundToggle = document.getElementById('soundToggle');
+  const galleryRow = document.getElementById('galleryRow');
+  const toast = document.getElementById('toast');
+
+  const COLORS = [
+    '#ff4d4d', '#ff9a3c', '#ffd93d', '#a8e05f', '#4caf50',
+    '#4fd1ff', '#2e6da4', '#4f6bff', '#a55bff', '#ff5da2',
+    '#ffb3c6', '#a0623c', '#e0e0e0', '#8d6748', '#2b2b2b', '#ffffff'
+  ];
+  const LIGHT_COLORS = new Set(['#ffd93d', '#e0e0e0', '#ffffff', '#a8e05f', '#ffb3c6']);
+  const SIZES = [4, 10, 18, 28];
+
+  function rand(min, max) { return Math.random() * (max - min) + min; }
+
+  // ---------- Sound (synthesized, no audio files) ----------
+  let soundOn = true;
+  let audioCtx = null;
+
+  function getAudioCtx() {
+    if (!audioCtx) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      audioCtx = new AC();
+    }
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    return audioCtx;
+  }
+
+  function playTone(freq, startTime, duration, type, peakGain) {
+    const ctxA = getAudioCtx();
+    const osc = ctxA.createOscillator();
+    const gain = ctxA.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, startTime);
+    gain.gain.setValueAtTime(0.0001, startTime);
+    gain.gain.exponentialRampToValueAtTime(peakGain, startTime + 0.015);
+    gain.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
+    osc.connect(gain).connect(ctxA.destination);
+    osc.start(startTime);
+    osc.stop(startTime + duration + 0.03);
+  }
+
+  function playPop() {
+    if (!soundOn) return;
+    const ctxA = getAudioCtx();
+    const now = ctxA.currentTime;
+    const osc = ctxA.createOscillator();
+    const gain = ctxA.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(rand(500, 700), now);
+    osc.frequency.exponentialRampToValueAtTime(160, now + 0.1);
+    gain.gain.setValueAtTime(0.2, now);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.11);
+    osc.connect(gain).connect(ctxA.destination);
+    osc.start(now);
+    osc.stop(now + 0.13);
+  }
+
+  function playChime() {
+    if (!soundOn) return;
+    const now = getAudioCtx().currentTime;
+    [523.25, 654.06, 784.88].forEach((freq, i) => playTone(freq, now + i * 0.06, 0.22, 'triangle', 0.2));
+  }
+
+  function createNoiseBuffer(ctxA, duration) {
+    const bufferSize = Math.max(1, Math.floor(ctxA.sampleRate * duration));
+    const buffer = ctxA.createBuffer(1, bufferSize, ctxA.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+    return buffer;
+  }
+
+  function playWhoosh() {
+    if (!soundOn) return;
+    const ctxA = getAudioCtx();
+    const now = ctxA.currentTime;
+    const dur = 0.4;
+    const noise = ctxA.createBufferSource();
+    noise.buffer = createNoiseBuffer(ctxA, dur);
+    const filter = ctxA.createBiquadFilter();
+    filter.type = 'bandpass';
+    filter.frequency.setValueAtTime(2200, now);
+    filter.frequency.exponentialRampToValueAtTime(180, now + dur);
+    const gain = ctxA.createGain();
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.exponentialRampToValueAtTime(0.3, now + 0.05);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + dur);
+    noise.connect(filter).connect(gain).connect(ctxA.destination);
+    noise.start(now);
+    noise.stop(now + dur + 0.05);
+  }
+
+  soundToggle.addEventListener('click', () => {
+    soundOn = !soundOn;
+    soundToggle.textContent = soundOn ? '🔊' : '🔇';
+    if (soundOn) getAudioCtx();
+  });
+
+  homeBtn.addEventListener('click', () => { window.location.href = 'painting.html'; });
+
+  function showToast(text) {
+    toast.textContent = text;
+    toast.classList.add('show');
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(() => toast.classList.remove('show'), 1600);
+  }
+
+  // ---------- State ----------
+  let currentColor = COLORS[0];
+  let currentSize = SIZES[1];
+  let tool = 'brush'; // 'brush' | 'erase' | 'fill'
+  let currentPic = null;
+  let undoStack = [];
+  let redoStack = [];
+
+  // ---------- Canvas sizing ----------
+  function resizeCanvas() {
+    const displayWidth = stage.clientWidth;
+    const displayHeight = stage.clientHeight;
+    if (!displayWidth || !displayHeight) return;
+
+    let prev = null;
+    if (canvas.width > 0 && canvas.height > 0) {
+      prev = document.createElement('canvas');
+      prev.width = canvas.width;
+      prev.height = canvas.height;
+      prev.getContext('2d').drawImage(canvas, 0, 0);
+    }
+
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = Math.round(displayWidth * dpr);
+    canvas.height = Math.round(displayHeight * dpr);
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.scale(dpr, dpr);
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    if (prev) ctx.drawImage(prev, 0, 0, prev.width, prev.height, 0, 0, displayWidth, displayHeight);
+  }
+  window.addEventListener('resize', resizeCanvas);
+
+  // ---------- Undo / redo ----------
+  function snapshotState() {
+    const fills = {};
+    svgRoot.querySelectorAll('[data-group]').forEach(el => {
+      const g = el.dataset.group;
+      if (!(g in fills)) fills[g] = el.getAttribute('fill');
+    });
+    return { fills, imgData: ctx.getImageData(0, 0, canvas.width, canvas.height) };
+  }
+
+  function restoreState(state) {
+    Object.entries(state.fills).forEach(([group, color]) => {
+      svgRoot.querySelectorAll(`[data-group="${group}"]`).forEach(el => el.setAttribute('fill', color));
+    });
+    ctx.putImageData(state.imgData, 0, 0);
+  }
+
+  function pushUndo() {
+    undoStack.push(snapshotState());
+    if (undoStack.length > 25) undoStack.shift();
+    redoStack = [];
+    updateUndoRedoButtons();
+  }
+
+  function updateUndoRedoButtons() {
+    undoBtn.disabled = undoStack.length === 0;
+    redoBtn.disabled = redoStack.length === 0;
+  }
+
+  undoBtn.addEventListener('click', () => {
+    if (!undoStack.length) return;
+    redoStack.push(snapshotState());
+    restoreState(undoStack.pop());
+    updateUndoRedoButtons();
+  });
+
+  redoBtn.addEventListener('click', () => {
+    if (!redoStack.length) return;
+    undoStack.push(snapshotState());
+    restoreState(redoStack.pop());
+    updateUndoRedoButtons();
+  });
+
+  // ---------- Load a picture ----------
+  function loadPicture(pic) {
+    currentPic = pic;
+    svgRoot.innerHTML = pic.svg;
+    resizeCanvas();
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    undoStack = [];
+    redoStack = [];
+    updateUndoRedoButtons();
+    [...galleryRow.children].forEach(card => {
+      card.classList.toggle('active', card.dataset.id === pic.id);
+    });
+  }
+
+  function pickRandomPicture(excludeId) {
+    const options = excludeId ? PICTURES.filter(p => p.id !== excludeId) : PICTURES;
+    return options[Math.floor(Math.random() * options.length)];
+  }
+
+  // ---------- Fill tool ----------
+  svgRoot.addEventListener('pointerdown', (e) => {
+    if (tool !== 'fill') return;
+    const el = e.target.closest('.fillable');
+    if (!el) return;
+    pushUndo();
+    const group = el.dataset.group;
+    svgRoot.querySelectorAll(`[data-group="${group}"]`).forEach(node => node.setAttribute('fill', currentColor));
+    playPop();
+  });
+
+  // ---------- Brush / eraser ----------
+  let drawing = false;
+  let lastPoint = null;
+
+  function getPos(e) {
+    const rect = canvas.getBoundingClientRect();
+    return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+  }
+
+  function dotAt(pos) {
+    ctx.beginPath();
+    ctx.fillStyle = currentColor;
+    ctx.globalCompositeOperation = tool === 'erase' ? 'destination-out' : 'source-over';
+    ctx.arc(pos.x, pos.y, currentSize / 2, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  canvas.addEventListener('pointerdown', (e) => {
+    if (tool !== 'brush' && tool !== 'erase') return;
+    canvas.setPointerCapture(e.pointerId);
+    pushUndo();
+    drawing = true;
+    const pos = getPos(e);
+    lastPoint = pos;
+    dotAt(pos);
+  });
+
+  canvas.addEventListener('pointermove', (e) => {
+    if (!drawing) return;
+    const pos = getPos(e);
+    ctx.globalCompositeOperation = tool === 'erase' ? 'destination-out' : 'source-over';
+    ctx.strokeStyle = currentColor;
+    ctx.lineWidth = currentSize;
+    ctx.beginPath();
+    ctx.moveTo(lastPoint.x, lastPoint.y);
+    ctx.lineTo(pos.x, pos.y);
+    ctx.stroke();
+    lastPoint = pos;
+  });
+
+  function endStroke() { drawing = false; lastPoint = null; }
+  canvas.addEventListener('pointerup', endStroke);
+  canvas.addEventListener('pointercancel', endStroke);
+
+  // ---------- Toolbar: colors ----------
+  COLORS.forEach((color, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'swatch' + (i === 0 ? ' active' : '') + (LIGHT_COLORS.has(color) ? ' light-color' : '');
+    btn.style.background = color;
+    btn.addEventListener('click', () => {
+      currentColor = color;
+      [...colorGrid.querySelectorAll('.swatch')].forEach(s => s.classList.remove('active'));
+      btn.classList.add('active');
+      if (tool === 'erase') setTool('brush');
+    });
+    colorGrid.appendChild(btn);
+  });
+
+  // ---------- Toolbar: sizes ----------
+  SIZES.forEach((size, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'size-btn' + (i === 1 ? ' active' : '');
+    const dot = document.createElement('div');
+    dot.className = 'size-dot';
+    const d = 6 + i * 6;
+    dot.style.width = d + 'px';
+    dot.style.height = d + 'px';
+    btn.appendChild(dot);
+    btn.addEventListener('click', () => {
+      currentSize = size;
+      [...sizeRow.querySelectorAll('.size-btn')].forEach(s => s.classList.remove('active'));
+      btn.classList.add('active');
+    });
+    sizeRow.appendChild(btn);
+  });
+
+  // ---------- Toolbar: tools ----------
+  function setTool(t) {
+    tool = t;
+    canvas.style.pointerEvents = (t === 'brush' || t === 'erase') ? 'auto' : 'none';
+    svgRoot.style.cursor = t === 'fill' ? 'pointer' : 'default';
+    [...toolRow.querySelectorAll('.tool-btn[data-tool]')].forEach(b => {
+      b.classList.toggle('active', b.dataset.tool === t);
+    });
+  }
+  setTool('brush');
+
+  toolRow.querySelectorAll('.tool-btn[data-tool]').forEach(btn => {
+    btn.addEventListener('click', () => setTool(btn.dataset.tool));
+  });
+
+  // ---------- Random / Clear / Save ----------
+  randomBtn.addEventListener('click', () => {
+    playPop();
+    loadPicture(pickRandomPicture(currentPic ? currentPic.id : null));
+    showToast('New picture! 🎲');
+  });
+
+  clearBtn.addEventListener('click', () => {
+    if (!currentPic) return;
+    pushUndo();
+    playWhoosh();
+    svgRoot.querySelectorAll('.fillable').forEach(el => el.setAttribute('fill', '#ffffff'));
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    showToast('All clean! 🧹');
+  });
+
+  saveBtn.addEventListener('click', () => {
+    getAudioCtx();
+    const svgString = new XMLSerializer().serializeToString(svgRoot);
+    const blob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const img = new Image();
+    img.onload = () => {
+      const outW = 800, outH = 600;
+      const off = document.createElement('canvas');
+      off.width = outW;
+      off.height = outH;
+      const octx = off.getContext('2d');
+      octx.fillStyle = '#ffffff';
+      octx.fillRect(0, 0, outW, outH);
+      octx.drawImage(img, 0, 0, outW, outH);
+      octx.drawImage(canvas, 0, 0, canvas.width, canvas.height, 0, 0, outW, outH);
+      URL.revokeObjectURL(url);
+      const link = document.createElement('a');
+      link.download = `my-${currentPic.id}-painting.png`;
+      link.href = off.toDataURL('image/png');
+      link.click();
+      playChime();
+      showToast('Picture saved! 🎉');
+    };
+    img.src = url;
+  });
+
+  // ---------- Gallery ----------
+  PICTURES.forEach(pic => {
+    const card = document.createElement('div');
+    card.className = 'gallery-card';
+    card.dataset.id = pic.id;
+
+    const thumb = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    thumb.setAttribute('viewBox', '0 0 400 300');
+    thumb.innerHTML = pic.svg;
+    card.appendChild(thumb);
+
+    const label = document.createElement('div');
+    label.className = 'name';
+    label.textContent = pic.name;
+    card.appendChild(label);
+
+    card.addEventListener('click', () => {
+      playPop();
+      loadPicture(pic);
+    });
+    galleryRow.appendChild(card);
+  });
+
+  // ---------- Init ----------
+  window.addEventListener('load', () => {
+    loadPicture(pickRandomPicture());
+  });
+</script>
+
+</body>
+</html>
