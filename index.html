@@ -171,7 +171,7 @@
   }
 </style>
 </head>
-<body>
+<body data-page="home">
 
 <div class="sky" id="sky"></div>
 
@@ -233,72 +233,7 @@
   </div>
 </div>
 
-<script>
-  const sky = document.getElementById('sky');
-  const soundToggle = document.getElementById('soundToggle');
-
-  function rand(min, max) { return Math.random() * (max - min) + min; }
-  function choice(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
-
-  function spawnTwinkle() {
-    const t = document.createElement('div');
-    t.className = 'twinkle';
-    t.textContent = choice(['✨', '⭐', '💫']);
-    t.style.left = rand(0, 100) + 'vw';
-    t.style.top = rand(0, 90) + 'vh';
-    t.style.fontSize = rand(0.7, 1.6) + 'em';
-    t.style.animationDuration = rand(1.6, 3.2) + 's';
-    sky.appendChild(t);
-    setTimeout(() => t.remove(), 6000);
-  }
-  setInterval(spawnTwinkle, 600);
-  for (let i = 0; i < 8; i++) setTimeout(spawnTwinkle, i * 150);
-
-  // ---------- Sound (synthesized, no audio files) ----------
-  let soundOn = true;
-  let audioCtx = null;
-
-  function getAudioCtx() {
-    if (!audioCtx) {
-      const AC = window.AudioContext || window.webkitAudioContext;
-      audioCtx = new AC();
-    }
-    if (audioCtx.state === 'suspended') audioCtx.resume();
-    return audioCtx;
-  }
-
-  function playPop() {
-    if (!soundOn) return;
-    const ctx = getAudioCtx();
-    const now = ctx.currentTime;
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(rand(500, 700), now);
-    osc.frequency.exponentialRampToValueAtTime(180, now + 0.12);
-    gain.gain.setValueAtTime(0.22, now);
-    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.13);
-    osc.connect(gain).connect(ctx.destination);
-    osc.start(now);
-    osc.stop(now + 0.15);
-  }
-
-  soundToggle.addEventListener('click', (e) => {
-    e.stopPropagation();
-    soundOn = !soundOn;
-    soundToggle.textContent = soundOn ? '🔊' : '🔇';
-    if (soundOn) getAudioCtx();
-  });
-
-  // ---------- Navigate on tile tap ----------
-  document.querySelectorAll('.tile').forEach(tile => {
-    tile.addEventListener('click', () => {
-      playPop();
-      const href = tile.dataset.href;
-      setTimeout(() => { window.location.href = href; }, 160);
-    });
-  });
-</script>
+<script src="script.js"></script>
 
 </body>
 </html>
