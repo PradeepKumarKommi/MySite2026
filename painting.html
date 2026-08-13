@@ -65,7 +65,7 @@
     gap: 8px;
   }
 
-  .top-actions button, #soundToggle {
+  .top-actions button, #homeBtn, #soundToggle {
     border: none;
     border-radius: 50px;
     background: rgba(255,255,255,0.28);
@@ -82,11 +82,16 @@
     white-space: nowrap;
   }
 
-  #soundToggle {
+  .top-left-icons {
     position: absolute;
     left: 0;
     top: 50%;
     transform: translateY(-50%);
+    display: flex;
+    gap: 8px;
+  }
+
+  #homeBtn, #soundToggle {
     width: 40px;
     height: 40px;
     padding: 0;
@@ -269,7 +274,10 @@
 
 <div class="app">
   <div class="topbar">
-    <button id="soundToggle" aria-label="Toggle sound">🔊</button>
+    <div class="top-left-icons">
+      <button id="homeBtn" aria-label="Home">🏠</button>
+      <button id="soundToggle" aria-label="Toggle sound">🔊</button>
+    </div>
     <h1>🎨 Paint & Play! 🎨</h1>
     <div class="top-actions">
       <button id="paintPictureBtn">🖼️ Paint a Picture</button>
@@ -320,6 +328,7 @@
   const ctx = canvas.getContext('2d');
   const canvasWrap = document.querySelector('.canvas-wrap');
   const soundToggle = document.getElementById('soundToggle');
+  const homeBtn = document.getElementById('homeBtn');
   const paintPictureBtn = document.getElementById('paintPictureBtn');
   const clearBtn = document.getElementById('clearBtn');
   const saveBtn = document.getElementById('saveBtn');
@@ -635,6 +644,10 @@
 
   paintPictureBtn.addEventListener('click', () => {
     window.location.href = 'colorbook.html';
+  });
+
+  homeBtn.addEventListener('click', () => {
+    window.location.href = 'home.html';
   });
 </script>
 

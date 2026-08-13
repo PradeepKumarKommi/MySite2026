@@ -211,11 +211,16 @@
     50%      { transform: translateY(-8px); }
   }
 
-  #soundToggle {
+  .top-right-icons {
     position: fixed;
     top: max(14px, env(safe-area-inset-top));
     right: max(14px, env(safe-area-inset-right));
     z-index: 21;
+    display: flex;
+    gap: 8px;
+  }
+
+  .icon-circle {
     width: 44px;
     height: 44px;
     border-radius: 50%;
@@ -311,7 +316,10 @@
 
 <div class="sky" id="sky"></div>
 
-<button id="soundToggle" aria-label="Toggle sound">🔊</button>
+<div class="top-right-icons">
+  <button id="homeBtn" class="icon-circle" aria-label="Home">🏠</button>
+  <button id="soundToggle" class="icon-circle" aria-label="Toggle sound">🔊</button>
+</div>
 <div id="counter">10 left</div>
 
 <div class="topbar"><h1>🐾 Animal Friends 🐾</h1></div>
@@ -339,6 +347,7 @@
   const startOverlay = document.getElementById('startOverlay');
   const startBtn = document.getElementById('startBtn');
   const soundToggle = document.getElementById('soundToggle');
+  const homeBtn = document.getElementById('homeBtn');
   const counterEl = document.getElementById('counter');
   const congratsOverlay = document.getElementById('congratsOverlay');
   const playAgainBtn = document.getElementById('playAgainBtn');
@@ -435,35 +444,65 @@
     return buffer;
   }
 
-  // One "clap" = a short burst of filtered noise, snappy attack, quick decay.
-  function playClapBurst(ctx, startTime) {
+  // One "clap" = a short burst of filtered noise shaped like a real hand
+  // clap: a very fast transient click (high, narrow) layered with a slightly
+  // longer, lower thump underneath for body.
+  function playClapBurst(ctx, startTime, peak) {
+    const dur = rand(0.05, 0.09);
+
     const noise = ctx.createBufferSource();
-    noise.buffer = createNoiseBuffer(ctx, 0.14);
+    noise.buffer = createNoiseBuffer(ctx, dur);
 
     const bandpass = ctx.createBiquadFilter();
     bandpass.type = 'bandpass';
-    bandpass.frequency.value = rand(1200, 1800);
-    bandpass.Q.value = 0.7;
+    bandpass.frequency.value = rand(1000, 3200);
+    bandpass.Q.value = rand(0.6, 1.4);
+
+    const highpass = ctx.createBiquadFilter();
+    highpass.type = 'highpass';
+    highpass.frequency.value = 500;
 
     const gain = ctx.createGain();
     gain.gain.setValueAtTime(0.0001, startTime);
-    gain.gain.exponentialRampToValueAtTime(0.9, startTime + 0.004);
-    gain.gain.exponentialRampToValueAtTime(0.0001, startTime + 0.12);
+    gain.gain.exponentialRampToValueAtTime(peak, startTime + 0.002);
+    gain.gain.exponentialRampToValueAtTime(0.0001, startTime + dur);
 
-    noise.connect(bandpass).connect(gain).connect(ctx.destination);
+    noise.connect(bandpass).connect(highpass).connect(gain).connect(ctx.destination);
     noise.start(startTime);
-    noise.stop(startTime + 0.15);
+    noise.stop(startTime + dur + 0.02);
   }
 
-  // A little round of applause for a correct answer — a few quick clap
-  // bursts with slightly randomized timing so it doesn't sound too mechanical.
+  // A proper round of applause: a soft broadband "wash" bed (like the sound
+  // of a full crowd clapping together) with dozens of individual clap
+  // transients sprinkled on top, dense at first and thinning out as it fades
+  // — much closer to real applause than a handful of identical clicks.
   function playClapSound() {
     if (!soundOn) return;
     const ctx = getAudioCtx();
     const now = ctx.currentTime;
-    [0, 0.1, 0.19, 0.3, 0.42].forEach(t => {
-      playClapBurst(ctx, now + t + rand(-0.015, 0.015));
-    });
+    const totalDur = 1.1;
+
+    const wash = ctx.createBufferSource();
+    wash.buffer = createNoiseBuffer(ctx, totalDur);
+    const washFilter = ctx.createBiquadFilter();
+    washFilter.type = 'bandpass';
+    washFilter.frequency.value = 2200;
+    washFilter.Q.value = 0.4;
+    const washGain = ctx.createGain();
+    washGain.gain.setValueAtTime(0.0001, now);
+    washGain.gain.exponentialRampToValueAtTime(0.22, now + 0.1);
+    washGain.gain.exponentialRampToValueAtTime(0.12, now + 0.5);
+    washGain.gain.exponentialRampToValueAtTime(0.0001, now + totalDur);
+    wash.connect(washFilter).connect(washGain).connect(ctx.destination);
+    wash.start(now);
+    wash.stop(now + totalDur + 0.05);
+
+    let t = 0;
+    while (t < totalDur - 0.1) {
+      const fadeProgress = t / totalDur; // 0 (start) -> 1 (end)
+      playClapBurst(ctx, now + t, rand(0.35, 0.6) * (1 - fadeProgress * 0.6));
+      t += rand(0.02, 0.05 + fadeProgress * 0.08); // claps thin out over time
+    }
   }
 
   // A harsh game-show-style "wrong answer" buzzer: two slightly detuned
@@ -537,6 +576,8 @@
     if (!soundOn) window.speechSynthesis.cancel();
     else getAudioCtx();
   });
+
+  homeBtn.addEventListener('click', () => { window.location.href = 'home.html'; });
 
   // ---------- Reward particles ----------
   function confettiBurst(x, y) {
