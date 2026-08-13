@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Paint & Play</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    height: 100%;
+    overflow: hidden;
+    font-family: 'Baloo 2', 'Segoe UI', sans-serif;
+    background: linear-gradient(120deg, #4fd1ff, #7f5bff, #ff5da2, #ffd93d, #4fd1ff);
+    background-size: 500% 500%;
+    animation: candyShift 18s ease infinite;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  @keyframes candyShift {
+    0%   { background-position: 0% 50%; }
+    50%  { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+
+  .app {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    height: 100%;
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    padding: max(10px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));
+    gap: 8px;
+  }
+
+  .topbar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    min-height: 40px;
+  }
+
+  .topbar h1 {
+    margin: 0;
+    font-size: clamp(1.1em, 5vw, 1.7em);
+    font-weight: 800;
+    color: #fff;
+    text-shadow: 0 3px 10px rgba(0,0,0,0.25);
+  }
+
+  .top-actions {
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    gap: 8px;
+  }
+
+  .top-actions button, #soundToggle {
+    border: none;
+    border-radius: 50px;
+    background: rgba(255,255,255,0.28);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    color: #fff;
+    font-family: 'Baloo 2', sans-serif;
+    font-weight: 700;
+    font-size: clamp(0.8em, 3vw, 0.95em);
+    padding: 9px 14px;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.18);
+    text-shadow: 0 1px 4px rgba(0,0,0,0.2);
+    white-space: nowrap;
+  }
+
+  #soundToggle {
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    font-size: 1.1em;
+  }
+
+  .canvas-wrap {
+    flex: 1;
+    min-height: 0;
+    border-radius: 22px;
+    overflow: hidden;
+    box-shadow: 0 12px 34px rgba(0,0,0,0.25), inset 0 0 0 4px rgba(255,255,255,0.5);
+    background: #fff;
+  }
+
+  #paintCanvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+    touch-action: none;
+    cursor: crosshair;
+  }
+
+  .dock {
+    background: rgba(255,255,255,0.18);
+    border: 1px solid rgba(255,255,255,0.35);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-radius: 20px;
+    padding: 8px 10px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.18);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .dock-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    overflow-x: auto;
+    padding: 2px;
+    scrollbar-width: none;
+  }
+  .dock-row::-webkit-scrollbar { display: none; }
+
+  .dock-label {
+    font-size: 0.7em;
+    font-weight: 700;
+    color: rgba(255,255,255,0.85);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    min-width: 46px;
+    flex: 0 0 auto;
+  }
+
+  .swatch {
+    flex: 0 0 auto;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    border: 3px solid rgba(255,255,255,0.6);
+    cursor: pointer;
+    box-shadow: 0 3px 8px rgba(0,0,0,0.2);
+    transition: transform 0.15s ease;
+  }
+
+  .swatch.active {
+    border-color: #fff;
+    transform: scale(1.22);
+    box-shadow: 0 0 0 3px rgba(255,255,255,0.5), 0 3px 8px rgba(0,0,0,0.3);
+  }
+
+  .size-btn, .tool-btn, .stamp-btn {
+    flex: 0 0 auto;
+    border: none;
+    border-radius: 14px;
+    background: rgba(255,255,255,0.9);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 3px 8px rgba(0,0,0,0.18);
+    transition: transform 0.15s ease;
+  }
+
+  .size-btn { width: 40px; height: 40px; }
+  .tool-btn { width: 44px; height: 40px; font-size: 1.2em; }
+  .stamp-btn { width: 40px; height: 40px; font-size: 1.3em; }
+
+  .size-btn.active, .tool-btn.active, .stamp-btn.active {
+    background: #fff;
+    transform: scale(1.12);
+    box-shadow: 0 0 0 3px #ffd93d, 0 3px 8px rgba(0,0,0,0.25);
+  }
+
+  .size-dot {
+    border-radius: 50%;
+    background: #444;
+  }
+
+  #modalOverlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 30;
+    background: rgba(60, 20, 50, 0.55);
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+
+  .modal-card {
+    background: linear-gradient(135deg, #ff8aa0, #ff5da2);
+    border-radius: 24px;
+    padding: 30px 34px;
+    text-align: center;
+    max-width: 340px;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.35);
+    animation: popIn 0.35s cubic-bezier(.26,1.4,.44,1);
+  }
+
+  @keyframes popIn {
+    from { transform: scale(0.8); opacity: 0; }
+    to   { transform: scale(1); opacity: 1; }
+  }
+
+  .modal-card p {
+    color: #fff;
+    font-size: 1.2em;
+    font-weight: 700;
+    margin: 0 0 20px;
+    text-shadow: 0 2px 6px rgba(0,0,0,0.2);
+  }
+
+  .modal-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+  }
+
+  .modal-actions button {
+    font-family: 'Baloo 2', sans-serif;
+    font-weight: 800;
+    font-size: 1em;
+    padding: 12px 20px;
+    border: none;
+    border-radius: 50px;
+    cursor: pointer;
+    box-shadow: 0 6px 16px rgba(0,0,0,0.25);
+  }
+
+  #confirmClearYes { background: #fff; color: #ff4d6d; }
+  #confirmClearNo  { background: rgba(255,255,255,0.25); color: #fff; }
+
+  #toast {
+    position: fixed;
+    top: max(60px, calc(env(safe-area-inset-top) + 50px));
+    left: 50%;
+    transform: translateX(-50%) translateY(-10px);
+    z-index: 25;
+    background: rgba(0,0,0,0.55);
+    color: #fff;
+    font-weight: 700;
+    padding: 10px 22px;
+    border-radius: 50px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    white-space: nowrap;
+  }
+
+  #toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <div class="topbar">
+    <button id="soundToggle" aria-label="Toggle sound">🔊</button>
+    <h1>🎨 Paint & Play! 🎨</h1>
+    <div class="top-actions">
+      <button id="paintPictureBtn">🖼️ Paint a Picture</button>
+      <button id="clearBtn">🧹 Clear</button>
+      <button id="saveBtn">💾 Save</button>
+    </div>
+  </div>
+
+  <div class="canvas-wrap">
+    <canvas id="paintCanvas"></canvas>
+  </div>
+
+  <div class="dock">
+    <div class="dock-row" id="toolRow">
+      <span class="dock-label">Tool</span>
+      <button class="tool-btn active" data-tool="draw" title="Draw">✏️</button>
+      <button class="tool-btn" data-tool="erase" title="Erase">🧽</button>
+    </div>
+
+    <div class="dock-row" id="colorRow">
+      <span class="dock-label">Color</span>
+    </div>
+
+    <div class="dock-row" id="sizeRow">
+      <span class="dock-label">Size</span>
+    </div>
+
+    <div class="dock-row" id="stampRow">
+      <span class="dock-label">Stamps</span>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<div id="modalOverlay">
+  <div class="modal-card">
+    <p>Clear the whole picture? 🧹</p>
+    <div class="modal-actions">
+      <button id="confirmClearYes">Yes, clear! 🧹</button>
+      <button id="confirmClearNo">No, keep it 😊</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const canvas = document.getElementById('paintCanvas');
+  const ctx = canvas.getContext('2d');
+  const canvasWrap = document.querySelector('.canvas-wrap');
+  const soundToggle = document.getElementById('soundToggle');
+  const paintPictureBtn = document.getElementById('paintPictureBtn');
+  const clearBtn = document.getElementById('clearBtn');
+  const saveBtn = document.getElementById('saveBtn');
+  const modalOverlay = document.getElementById('modalOverlay');
+  const confirmClearYes = document.getElementById('confirmClearYes');
+  const confirmClearNo = document.getElementById('confirmClearNo');
+  const toast = document.getElementById('toast');
+  const colorRow = document.getElementById('colorRow');
+  const sizeRow = document.getElementById('sizeRow');
+  const stampRow = document.getElementById('stampRow');
+  const toolRow = document.getElementById('toolRow');
+
+  const COLORS = [
+    '#2b2b2b', '#ffffff', '#ff4d6d', '#ff9a3c', '#ffd93d',
+    '#6bff8c', '#2ec4f1', '#4f6bff', '#a55bff', '#ff5da2'
+  ];
+  const SIZES = [6, 14, 24, 40];
+  const STAMPS = ['⭐', '💖', '🌈', '🦋', '🌸', '🎈', '☀️', '🍭', '🐶', '🐱'];
+
+  function rand(min, max) { return Math.random() * (max - min) + min; }
+
+  // ---------- Sound (synthesized, no audio files) ----------
+  let soundOn = true;
+  let audioCtx = null;
+
+  function getAudioCtx() {
+    if (!audioCtx) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      audioCtx = new AC();
+    }
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    return audioCtx;
+  }
+
+  function createNoiseBuffer(ctx, duration) {
+    const bufferSize = Math.max(1, Math.floor(ctx.sampleRate * duration));
+    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+    return buffer;
+  }
+
+  function playTone(freq, startTime, duration, type, peakGain) {
+    const ctx = getAudioCtx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, startTime);
+    gain.gain.setValueAtTime(0.0001, startTime);
+    gain.gain.exponentialRampToValueAtTime(peakGain, startTime + 0.015);
+    gain.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
+    osc.connect(gain).connect(ctx.destination);
+    osc.start(startTime);
+    osc.stop(startTime + duration + 0.03);
+  }
+
+  function playPop() {
+    if (!soundOn) return;
+    const ctx = getAudioCtx();
+    const now = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(rand(500, 700), now);
+    osc.frequency.exponentialRampToValueAtTime(150, now + 0.12);
+    gain.gain.setValueAtTime(0.22, now);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.13);
+    osc.connect(gain).connect(ctx.destination);
+    osc.start(now);
+    osc.stop(now + 0.15);
+  }
+
+  function playWhoosh() {
+    if (!soundOn) return;
+    const ctx = getAudioCtx();
+    const now = ctx.currentTime;
+    const dur = 0.4;
+    const noise = ctx.createBufferSource();
+    noise.buffer = createNoiseBuffer(ctx, dur);
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'bandpass';
+    filter.frequency.setValueAtTime(2200, now);
+    filter.frequency.exponentialRampToValueAtTime(180, now + dur);
+    filter.Q.value = 1;
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.exponentialRampToValueAtTime(0.3, now + 0.05);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + dur);
+    noise.connect(filter).connect(gain).connect(ctx.destination);
+    noise.start(now);
+    noise.stop(now + dur + 0.05);
+  }
+
+  function playChime() {
+    if (!soundOn) return;
+    const ctx = getAudioCtx();
+    const now = ctx.currentTime;
+    const root = 523.25;
+    [root, root * 1.25, root * 1.5].forEach((freq, i) => {
+      playTone(freq, now + i * 0.06, 0.22, 'triangle', 0.2);
+    });
+  }
+
+  soundToggle.addEventListener('click', () => {
+    soundOn = !soundOn;
+    soundToggle.textContent = soundOn ? '🔊' : '🔇';
+    if (soundOn) getAudioCtx();
+  });
+
+  function showToast(text) {
+    toast.textContent = text;
+    toast.classList.add('show');
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(() => toast.classList.remove('show'), 1600);
+  }
+
+  // ---------- Canvas setup ----------
+  let currentColor = COLORS[2];
+  let currentSize = SIZES[1];
+  let currentStamp = STAMPS[0];
+  let tool = 'draw'; // 'draw' | 'erase' | 'stamp'
+
+  function fillWhite(w, h) {
+    ctx.save();
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, w, h);
+    ctx.restore();
+  }
+
+  function resizeCanvas() {
+    const displayWidth = canvasWrap.clientWidth;
+    const displayHeight = canvasWrap.clientHeight;
+    if (displayWidth === 0 || displayHeight === 0) return;
+
+    let prev = null;
+    if (canvas.width > 0 && canvas.height > 0) {
+      prev = document.createElement('canvas');
+      prev.width = canvas.width;
+      prev.height = canvas.height;
+      prev.getContext('2d').drawImage(canvas, 0, 0);
+    }
+
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = Math.round(displayWidth * dpr);
+    canvas.height = Math.round(displayHeight * dpr);
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.scale(dpr, dpr);
+
+    fillWhite(displayWidth, displayHeight);
+    if (prev) {
+      ctx.drawImage(prev, 0, 0, prev.width, prev.height, 0, 0, displayWidth, displayHeight);
+    }
+
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+  }
+
+  window.addEventListener('load', resizeCanvas);
+  window.addEventListener('resize', resizeCanvas);
+
+  // ---------- Drawing ----------
+  let drawing = false;
+  let lastPoint = null;
+
+  function getPos(e) {
+    const rect = canvas.getBoundingClientRect();
+    return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+  }
+
+  function dotAt(pos) {
+    ctx.beginPath();
+    ctx.fillStyle = tool === 'erase' ? '#ffffff' : currentColor;
+    ctx.arc(pos.x, pos.y, currentSize / 2, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  function placeStamp(pos) {
+    ctx.save();
+    ctx.font = '54px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.translate(pos.x, pos.y);
+    ctx.rotate(rand(-0.3, 0.3));
+    ctx.fillText(currentStamp, 0, 0);
+    ctx.restore();
+    playPop();
+  }
+
+  canvas.addEventListener('pointerdown', (e) => {
+    canvas.setPointerCapture(e.pointerId);
+    const pos = getPos(e);
+
+    if (tool === 'stamp') {
+      placeStamp(pos);
+      return;
+    }
+
+    drawing = true;
+    lastPoint = pos;
+    dotAt(pos);
+  });
+
+  canvas.addEventListener('pointermove', (e) => {
+    if (!drawing) return;
+    const pos = getPos(e);
+    ctx.strokeStyle = tool === 'erase' ? '#ffffff' : currentColor;
+    ctx.lineWidth = currentSize;
+    ctx.beginPath();
+    ctx.moveTo(lastPoint.x, lastPoint.y);
+    ctx.lineTo(pos.x, pos.y);
+    ctx.stroke();
+    lastPoint = pos;
+  });
+
+  function endStroke() {
+    drawing = false;
+    lastPoint = null;
+  }
+  canvas.addEventListener('pointerup', endStroke);
+  canvas.addEventListener('pointercancel', endStroke);
+
+  // ---------- Toolbar: colors ----------
+  COLORS.forEach((color, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'swatch' + (i === 2 ? ' active' : '');
+    btn.style.background = color;
+    btn.addEventListener('click', () => {
+      currentColor = color;
+      tool = 'draw';
+      updateToolButtons();
+      [...colorRow.querySelectorAll('.swatch')].forEach(s => s.classList.remove('active'));
+      btn.classList.add('active');
+    });
+    colorRow.appendChild(btn);
+  });
+
+  // ---------- Toolbar: sizes ----------
+  SIZES.forEach((size, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'size-btn' + (i === 1 ? ' active' : '');
+    const dot = document.createElement('div');
+    dot.className = 'size-dot';
+    const dotSize = 8 + i * 7;
+    dot.style.width = dotSize + 'px';
+    dot.style.height = dotSize + 'px';
+    btn.appendChild(dot);
+    btn.addEventListener('click', () => {
+      currentSize = size;
+      [...sizeRow.querySelectorAll('.size-btn')].forEach(s => s.classList.remove('active'));
+      btn.classList.add('active');
+    });
+    sizeRow.appendChild(btn);
+  });
+
+  // ---------- Toolbar: stamps ----------
+  STAMPS.forEach((emoji, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'stamp-btn';
+    btn.textContent = emoji;
+    btn.addEventListener('click', () => {
+      currentStamp = emoji;
+      tool = 'stamp';
+      updateToolButtons();
+      [...stampRow.querySelectorAll('.stamp-btn')].forEach(s => s.classList.remove('active'));
+      btn.classList.add('active');
+    });
+    stampRow.appendChild(btn);
+  });
+
+  // ---------- Toolbar: tools (draw / erase) ----------
+  function updateToolButtons() {
+    [...toolRow.querySelectorAll('.tool-btn')].forEach(b => {
+      b.classList.toggle('active', b.dataset.tool === tool);
+    });
+    if (tool !== 'stamp') {
+      [...stampRow.querySelectorAll('.stamp-btn')].forEach(s => s.classList.remove('active'));
+    }
+  }
+
+  toolRow.querySelectorAll('.tool-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      tool = btn.dataset.tool;
+      updateToolButtons();
+    });
+  });
+
+  // ---------- Clear ----------
+  clearBtn.addEventListener('click', () => {
+    modalOverlay.style.display = 'flex';
+  });
+
+  confirmClearNo.addEventListener('click', () => {
+    modalOverlay.style.display = 'none';
+  });
+
+  confirmClearYes.addEventListener('click', () => {
+    modalOverlay.style.display = 'none';
+    playWhoosh();
+    fillWhite(canvasWrap.clientWidth, canvasWrap.clientHeight);
+    showToast('All clean! 🧹');
+  });
+
+  // ---------- Save ----------
+  saveBtn.addEventListener('click', () => {
+    getAudioCtx();
+    playChime();
+    const link = document.createElement('a');
+    link.download = 'my-painting.png';
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+    showToast('Picture saved! 🎉');
+  });
+
+  paintPictureBtn.addEventListener('click', () => {
+    window.location.href = 'colorbook.html';
+  });
+</script>
+
+</body>
+</html>
