@@ -112,6 +112,81 @@ function playWhoosh() {
   noise.stop(now + dur + 0.05);
 }
 
+// A harsh game-show-style "wrong answer" buzzer: two slightly detuned
+// sawtooth oscillators beating against each other through a low-pass
+// filter for a buzzy, unmistakably "nope" sound.
+function playBuzzer() {
+  if (!soundOn) return;
+  const ctx = getAudioCtx();
+  const now = ctx.currentTime;
+  const duration = 0.45;
+
+  const filter = ctx.createBiquadFilter();
+  filter.type = 'lowpass';
+  filter.frequency.value = 900;
+
+  const gain = ctx.createGain();
+  gain.gain.setValueAtTime(0.0001, now);
+  gain.gain.exponentialRampToValueAtTime(0.25, now + 0.02);
+  gain.gain.setValueAtTime(0.25, now + duration - 0.08);
+  gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+
+  filter.connect(gain).connect(ctx.destination);
+
+  [140, 144].forEach(freq => {
+    const osc = ctx.createOscillator();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(freq, now);
+    osc.connect(filter);
+    osc.start(now);
+    osc.stop(now + duration + 0.03);
+  });
+}
+
+// ---------- Speech (used by animals.html and numbers.html) ----------
+// Pick a cute, kid-friendly voice once voices are available (loading is
+// async and browser-dependent, so we retry on the voiceschanged event).
+// Novelty/playful system voices (where available) come first since they
+// sound genuinely bubbly rather than a flat assistant voice; normal female
+// voices are the fallback.
+let ladyVoice = null;
+function pickLadyVoice() {
+  if (!('speechSynthesis' in window)) return;
+  const voices = window.speechSynthesis.getVoices();
+  if (!voices.length) return;
+
+  const funNames = ['Bubbles', 'Junior', 'Princess', 'Kathy', 'Whisper', 'Grandma', 'Superstar'];
+  const preferredNames = [
+    'Google UK English Female', 'Samantha', 'Victoria', 'Karen', 'Moira',
+    'Tessa', 'Fiona', 'Susan', 'Serena', 'Microsoft Zira', 'Google US English'
+  ];
+
+  ladyVoice =
+    voices.find(v => funNames.some(name => v.name.includes(name))) ||
+    voices.find(v => preferredNames.some(name => v.name.includes(name))) ||
+    voices.find(v => /female|woman|girl/i.test(v.name)) ||
+    voices.find(v => v.lang && v.lang.startsWith('en')) ||
+    voices[0];
+}
+pickLadyVoice();
+if ('speechSynthesis' in window) {
+  window.speechSynthesis.onvoiceschanged = pickLadyVoice;
+}
+
+function speak(text) {
+  if (!soundOn || !('speechSynthesis' in window)) return;
+  window.speechSynthesis.cancel();
+  const utter = new SpeechSynthesisUtterance(text);
+  if (ladyVoice) utter.voice = ladyVoice;
+  // Higher pitch + a touch slower reads as bubbly/childlike rather than a
+  // flat assistant voice. A little random jitter each time (rather than
+  // fixed numbers every call) keeps it from sounding like a robotic loop,
+  // closer to how a real person's pitch wobbles slightly between words.
+  utter.rate = rand(0.82, 0.92);
+  utter.pitch = rand(1.5, 1.7);
+  window.speechSynthesis.speak(utter);
+}
+
 // ---------- Soft background music (synthesized loop, no audio files) ----------
 const MUSIC_NOTES = [
   523.25, 587.33, 659.25, 587.33, 523.25, 440.00, 523.25, 587.33,
@@ -146,7 +221,10 @@ function stopMusic() {
 // anywhere; animals.html instead starts it explicitly when its Start
 // button is pressed (see initAnimals), since that's already gated behind
 // a "Start!" screen.
-if (PAGE !== 'animals') {
+// numbers.html has no background music (it's built entirely around spoken
+// number prompts, and music underneath would just be noise), and
+// animals.html starts its music explicitly from its own Start button.
+if (PAGE !== 'animals' && PAGE !== 'numbers') {
   document.addEventListener('pointerdown', function firstGesture() {
     document.removeEventListener('pointerdown', firstGesture);
     if (soundOn) startMusic();
@@ -477,71 +555,6 @@ function initAnimals() {
       playClapBurst(ctx, now + t, rand(0.35, 0.6) * (1 - fadeProgress * 0.6));
       t += rand(0.02, 0.05 + fadeProgress * 0.08); // claps thin out over time
     }
-  }
-
-  // A harsh game-show-style "wrong answer" buzzer: two slightly detuned
-  // sawtooth oscillators beating against each other through a low-pass
-  // filter for a buzzy, unmistakably "nope" sound.
-  function playBuzzer() {
-    if (!soundOn) return;
-    const ctx = getAudioCtx();
-    const now = ctx.currentTime;
-    const duration = 0.45;
-
-    const filter = ctx.createBiquadFilter();
-    filter.type = 'lowpass';
-    filter.frequency.value = 900;
-
-    const gain = ctx.createGain();
-    gain.gain.setValueAtTime(0.0001, now);
-    gain.gain.exponentialRampToValueAtTime(0.25, now + 0.02);
-    gain.gain.setValueAtTime(0.25, now + duration - 0.08);
-    gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
-
-    filter.connect(gain).connect(ctx.destination);
-
-    [140, 144].forEach(freq => {
-      const osc = ctx.createOscillator();
-      osc.type = 'sawtooth';
-      osc.frequency.setValueAtTime(freq, now);
-      osc.connect(filter);
-      osc.start(now);
-      osc.stop(now + duration + 0.03);
-    });
-  }
-
-  // Pick a pleasant female voice once voices are available (loading is
-  // async and browser-dependent, so we retry on the voiceschanged event).
-  let ladyVoice = null;
-  function pickLadyVoice() {
-    if (!('speechSynthesis' in window)) return;
-    const voices = window.speechSynthesis.getVoices();
-    if (!voices.length) return;
-
-    const preferredNames = [
-      'Google UK English Female', 'Google US English', 'Microsoft Zira',
-      'Samantha', 'Victoria', 'Karen', 'Moira', 'Tessa', 'Fiona', 'Susan', 'Serena'
-    ];
-
-    ladyVoice =
-      voices.find(v => preferredNames.some(name => v.name.includes(name))) ||
-      voices.find(v => /female|woman|girl/i.test(v.name)) ||
-      voices.find(v => v.lang && v.lang.startsWith('en')) ||
-      voices[0];
-  }
-  pickLadyVoice();
-  if ('speechSynthesis' in window) {
-    window.speechSynthesis.onvoiceschanged = pickLadyVoice;
-  }
-
-  function speak(text) {
-    if (!soundOn || !('speechSynthesis' in window)) return;
-    window.speechSynthesis.cancel();
-    const utter = new SpeechSynthesisUtterance(text);
-    if (ladyVoice) utter.voice = ladyVoice;
-    utter.rate = 0.92;
-    utter.pitch = 1.35; // warm, sweet tone
-    window.speechSynthesis.speak(utter);
   }
 
   // ---------- Reward particles ----------
@@ -1622,6 +1635,248 @@ function initColorbook() {
 }
 
 // ============================================================
+// numbers.html — tap the numbers 1→10 in order
+// ============================================================
+function initNumbers() {
+  const sky = document.getElementById('sky');
+  const grid = document.getElementById('grid');
+  const nextLabel = document.getElementById('nextLabel');
+  const congratsOverlay = document.getElementById('congratsOverlay');
+  const playAgainBtn = document.getElementById('playAgainBtn');
+
+  const TILE_COLORS = [
+    '#ff4d6d', '#ff9a3c', '#ffd93d', '#6bff8c', '#2ec4f1',
+    '#4f6bff', '#a55bff', '#ff5da2', '#2ecf6b', '#ff7043'
+  ];
+  const NUMBER_WORDS = ['One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten'];
+
+  let nextNumber = 1;
+  let numberSpeechTimer = null;
+
+  // Repeats the current target number out loud ("One, one, one...") until
+  // the matching tile is found — this page has no mute toggle, the spoken
+  // prompt is the whole point of it.
+  function startNumberSpeech() {
+    stopNumberSpeech();
+    const word = NUMBER_WORDS[nextNumber - 1] + '!'; // the "!" nudges the voice into a perkier, less flat delivery
+    speak(word);
+    numberSpeechTimer = setInterval(() => speak(word), 1400);
+  }
+
+  function stopNumberSpeech() {
+    clearInterval(numberSpeechTimer);
+    numberSpeechTimer = null;
+  }
+
+  // ---------- Pleasant piano-style background music (this page only) ----------
+  // A real piano note has a quick pluck then a long harmonic decay, unlike
+  // a sustained tone — a few overtones fading at different rates gets much
+  // closer to that than a single flat oscillator.
+  function playPianoNote(freq, startTime, dur, peakGain) {
+    const ctx = getAudioCtx();
+    const partials = [
+      { mult: 1, gain: 1.00, decay: dur },
+      { mult: 2, gain: 0.35, decay: dur * 0.6 },
+      { mult: 3, gain: 0.15, decay: dur * 0.35 },
+      { mult: 4, gain: 0.08, decay: dur * 0.22 }
+    ];
+    partials.forEach(p => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq * p.mult, startTime);
+      const g = peakGain * p.gain;
+      gain.gain.setValueAtTime(0.0001, startTime);
+      gain.gain.exponentialRampToValueAtTime(g, startTime + 0.006);
+      gain.gain.exponentialRampToValueAtTime(0.0001, startTime + p.decay);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(startTime);
+      osc.stop(startTime + p.decay + 0.05);
+    });
+  }
+
+  // A calm little pentatonic phrase — gentle enough to sit underneath the
+  // spoken numbers without competing with them.
+  const PIANO_NOTES = [523.25, 587.33, 659.25, 784.99, 659.25, 587.33, 523.25, 440.00];
+  let pianoTimer = null;
+  let pianoStep = 0;
+
+  function schedulePianoNote() {
+    const now = getAudioCtx().currentTime;
+    const freq = PIANO_NOTES[pianoStep % PIANO_NOTES.length];
+    pianoStep++;
+    playPianoNote(freq, now, 1.4, 0.22);
+  }
+
+  function startPianoMusic() {
+    if (pianoTimer) return;
+    schedulePianoNote();
+    pianoTimer = setInterval(schedulePianoNote, 700);
+  }
+
+  // Speech and music can only start inside a real user gesture.
+  document.addEventListener('pointerdown', function firstGesture() {
+    document.removeEventListener('pointerdown', firstGesture);
+    startNumberSpeech();
+    startPianoMusic();
+  }, { once: true });
+
+  // ---------- Background twinkles ----------
+  function spawnTwinkle() {
+    const t = document.createElement('div');
+    t.className = 'twinkle';
+    t.textContent = choice(['✨', '⭐', '💫']);
+    t.style.left = rand(0, 100) + 'vw';
+    t.style.top = rand(0, 90) + 'vh';
+    t.style.fontSize = rand(0.7, 1.6) + 'em';
+    t.style.animationDuration = rand(1.6, 3.2) + 's';
+    sky.appendChild(t);
+    setTimeout(() => t.remove(), 6000);
+  }
+  setInterval(spawnTwinkle, 600);
+  for (let i = 0; i < 8; i++) setTimeout(spawnTwinkle, i * 150);
+
+  // ---------- Celebration particles ----------
+  function confettiBurst(x, y) {
+    for (let i = 0; i < 22; i++) {
+      const p = document.createElement('div');
+      p.className = 'particle confetti';
+      p.style.left = x + 'px';
+      p.style.top = y + 'px';
+      p.style.background = choice(TILE_COLORS);
+
+      const angle = rand(0, Math.PI * 2);
+      const dist = rand(70, 200);
+      const dx = Math.cos(angle) * dist;
+      const dy = Math.sin(angle) * dist - rand(30, 90);
+      const rot = rand(180, 720) * (Math.random() < 0.5 ? -1 : 1);
+      const dur = rand(0.8, 1.3);
+
+      document.body.appendChild(p);
+      p.animate([
+        { transform: 'translate(-50%,-50%) translate(0,0) rotate(0deg)', opacity: 1 },
+        { transform: `translate(-50%,-50%) translate(${dx}px, ${dy}px) rotate(${rot}deg)`, opacity: 1, offset: 0.6 },
+        { transform: `translate(-50%,-50%) translate(${dx * 1.15}px, ${dy + 150}px) rotate(${rot * 1.3}deg)`, opacity: 0 }
+      ], { duration: dur * 1000, easing: 'cubic-bezier(.2,.7,.3,1)' });
+
+      setTimeout(() => p.remove(), dur * 1000 + 50);
+    }
+  }
+
+  function starBurst(x, y) {
+    for (let i = 0; i < 8; i++) {
+      const p = document.createElement('div');
+      p.className = 'particle star-bit';
+      p.textContent = choice(['⭐', '✨', '💫']);
+      p.style.left = x + 'px';
+      p.style.top = y + 'px';
+
+      const angle = (Math.PI * 2 * i) / 8 + rand(-0.2, 0.2);
+      const dist = rand(50, 120);
+      const dx = Math.cos(angle) * dist;
+      const dy = Math.sin(angle) * dist;
+      const dur = rand(0.6, 0.9);
+
+      document.body.appendChild(p);
+      p.animate([
+        { transform: 'translate(-50%,-50%) translate(0,0) scale(0.4)', opacity: 1 },
+        { transform: `translate(-50%,-50%) translate(${dx}px, ${dy}px) scale(1.1)`, opacity: 1, offset: 0.6 },
+        { transform: `translate(-50%,-50%) translate(${dx}px, ${dy}px) scale(0.3)`, opacity: 0 }
+      ], { duration: dur * 1000, easing: 'ease-out' });
+
+      setTimeout(() => p.remove(), dur * 1000 + 50);
+    }
+  }
+
+  function launchConfettiShow() {
+    let bursts = 0;
+    const interval = setInterval(() => {
+      const x = rand(60, window.innerWidth - 60);
+      const y = rand(80, window.innerHeight * 0.6);
+      confettiBurst(x, y);
+      starBurst(x, y);
+      bursts++;
+      if (bursts >= 8) clearInterval(interval);
+    }, 300);
+  }
+
+  // A few firecracker rockets streaking up the screen for the finale.
+  function launchCrackers() {
+    for (let i = 0; i < 6; i++) {
+      setTimeout(() => {
+        const r = document.createElement('div');
+        r.className = 'rocket';
+        r.textContent = '🎆';
+        r.style.left = rand(10, 90) + 'vw';
+        r.style.animationDuration = rand(1.4, 2.2) + 's';
+        document.body.appendChild(r);
+        setTimeout(() => r.remove(), 2500);
+      }, i * 300);
+    }
+  }
+
+  // ---------- Grid setup ----------
+  function onTileClick(tile, num) {
+    if (tile.classList.contains('gone')) return;
+
+    if (num === nextNumber) {
+      tile.classList.add('gone');
+      playPop();
+      nextNumber++;
+
+      if (nextNumber > 10) {
+        stopNumberSpeech();
+        nextLabel.textContent = 'All done! 🎉';
+        setTimeout(finishGame, 500);
+      } else {
+        nextLabel.textContent = `Next: ${nextNumber}`;
+        startNumberSpeech();
+      }
+    } else {
+      playBuzzer();
+      tile.classList.remove('wrong');
+      void tile.offsetWidth; // restart animation if clicked again quickly
+      tile.classList.add('wrong');
+      setTimeout(() => tile.classList.remove('wrong'), 900);
+    }
+  }
+
+  function buildGrid() {
+    grid.innerHTML = '';
+    const order = shuffle([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+    order.forEach((num, i) => {
+      const tile = document.createElement('button');
+      tile.className = 'num-tile';
+      tile.textContent = num;
+      tile.style.background = TILE_COLORS[i % TILE_COLORS.length];
+      tile.addEventListener('pointerdown', () => onTileClick(tile, num));
+      grid.appendChild(tile);
+    });
+  }
+
+  function finishGame() {
+    playChime();
+    setTimeout(playChime, 300);
+    speak('Hooray! Hooray! You counted all the way to ten!');
+    congratsOverlay.style.display = 'flex';
+    launchConfettiShow();
+    launchCrackers();
+  }
+
+  function startNewRound() {
+    congratsOverlay.style.display = 'none';
+    nextNumber = 1;
+    nextLabel.textContent = 'Next: 1';
+    buildGrid();
+    startNumberSpeech();
+  }
+
+  playAgainBtn.addEventListener('click', startNewRound);
+
+  buildGrid();
+}
+
+// ============================================================
 // Dispatch — run only the current page's init function
 // ============================================================
 if (PAGE === 'home') initHome();
@@ -1629,3 +1884,4 @@ else if (PAGE === 'kids') initKids();
 else if (PAGE === 'animals') initAnimals();
 else if (PAGE === 'painting') initPainting();
 else if (PAGE === 'colorbook') initColorbook();
+else if (PAGE === 'numbers') initNumbers();
